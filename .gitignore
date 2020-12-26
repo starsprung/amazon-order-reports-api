@@ -1,6 +1,6 @@
 *.log
 buildcache
-converage
+coverage
 debug
 lib
 node_modules
