@@ -1,0 +1,7 @@
+*.log
+buildcache
+converage
+debug
+lib
+node_modules
+test-output
