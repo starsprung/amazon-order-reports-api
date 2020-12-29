@@ -177,7 +177,9 @@ describe('AmazonScraper', () => {
 
   describe('getOrders', () => {
     let scraper: AmazonScraper;
-    let pages: { [index: string]: Array<{ [attr: string]: any }> };
+    let pages: {
+      [index: string]: Array<{ [selector: string]: Array<{ [attr: string]: string }> }>;
+    };
 
     beforeEach(() => {
       scraper = new AmazonScraper({
