@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/starsprung/amazon-order-reports-api/compare/v3.0.0...v3.0.1) (2021-01-01)
+
+
+### Bug Fixes
+
+* handle OTP method selection screen ([e702f7d](https://github.com/starsprung/amazon-order-reports-api/commit/e702f7d9fd966601c0271c672baf7f4232f29a01))
+
 # [3.0.0](https://github.com/starsprung/amazon-order-reports-api/compare/v2.0.1...v3.0.0) (2021-01-01)
 
 
