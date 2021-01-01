@@ -26,7 +26,7 @@ describe('AmazonScraper', () => {
     mocked(mocks.page.target).mockReturnValue(mocks.target);
     mocked(mocks.page.url).mockReturnValue('');
     mocked(mocks.page.waitForResponse).mockImplementation(async (fn) => {
-      (fn as Function)(({
+      (fn as (response: Response) => boolean)(({
         url: () => 'https://www.amazon.com/b2b/reports/download'
       } as unknown) as Response);
       return {} as Response;
@@ -38,7 +38,7 @@ describe('AmazonScraper', () => {
     mocked(tmpdir).mockReturnValue('/tmp/');
     mocked(uuidv4).mockReturnValue('5fb041e4-ad7a-41d4-879f-d1ec1919201a');
     mocked(watch).mockImplementation((_filename: PathLike, fn) => {
-      (fn as Function)('rename', '01-Dec-2020_to_31-Dec-2020.csv');
+      (fn as (event: string, filename: string) => void)('rename', '01-Dec-2020_to_31-Dec-2020.csv');
       return ({ close: jest.fn() } as unknown) as FSWatcher;
     });
 
