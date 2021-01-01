@@ -225,15 +225,15 @@ export default class AmazonScraper {
 
     await page.select(Selectors.REPORT_TYPE_INPUT, reportType);
 
-    const startDateTime = DateTime.fromJSDate(startDate);
-    const endDateTime = DateTime.fromJSDate(endDate);
+    const startDateTime = DateTime.fromJSDate(startDate).setZone('America/Los_Angeles');
+    const endDateTime = DateTime.fromJSDate(endDate).setZone('America/Los_Angeles');
 
-    await page.select(Selectors.REPORT_START_DAY_INPUT, `${startDateTime.day}`);
-    await page.select(Selectors.REPORT_START_MONTH_INPUT, `${startDateTime.month}`);
-    await page.select(Selectors.REPORT_START_YEAR_INPUT, `${startDateTime.year}`);
-    await page.select(Selectors.REPORT_END_DAY_INPUT, `${endDateTime.day}`);
-    await page.select(Selectors.REPORT_END_MONTH_INPUT, `${endDateTime.month}`);
-    await page.select(Selectors.REPORT_END_YEAR_INPUT, `${endDateTime.year}`);
+    await page.select(Selectors.REPORT_START_DAY_INPUT, `${startDateTime.toFormat('d')}`);
+    await page.select(Selectors.REPORT_START_MONTH_INPUT, `${startDateTime.toFormat('M')}`);
+    await page.select(Selectors.REPORT_START_YEAR_INPUT, `${startDateTime.toFormat('yyyy')}`);
+    await page.select(Selectors.REPORT_END_DAY_INPUT, `${endDateTime.toFormat('d')}`);
+    await page.select(Selectors.REPORT_END_MONTH_INPUT, `${endDateTime.toFormat('M')}`);
+    await page.select(Selectors.REPORT_END_YEAR_INPUT, `${endDateTime.toFormat('yyyy')}`);
 
     await page.type(Selectors.REPORT_NAME_INPUT, reportName);
 
