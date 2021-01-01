@@ -1,18 +1,46 @@
+import appRootPath from 'app-root-path';
+import { createReadStream, Dirent, FSWatcher, PathLike, ReadStream, watch } from 'fs';
+import { mkdtemp, readdir, unlink } from 'fs/promises';
 import mockdate from 'mockdate';
-import { ElementHandle } from 'puppeteer';
+import { tmpdir } from 'os';
+import { ElementHandle, Response } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
+import { Readable } from 'stream';
 import { mocked } from 'ts-jest/utils';
-import AmazonScraper, { TimePeriod } from './index';
+import AmazonScraper, { OrderItem } from './index';
 import { mocks } from './__mocks__/puppeteer-extra';
+import { v4 as uuidv4 } from 'uuid';
+
+jest.mock('fs');
+jest.mock('fs/promises');
+jest.mock('os');
+jest.mock('uuid');
 
 describe('AmazonScraper', () => {
   beforeEach(() => {
-    mocked(puppeteer.launch).mockResolvedValue(mocks.browser);
+    mocked(createReadStream).mockReturnValue((Readable.from([]) as unknown) as ReadStream);
+    mocked(mkdtemp).mockResolvedValue('/tmp/amzscrKudNUt');
     mocked(mocks.browser.newPage).mockResolvedValue(mocks.page);
-    mocked(mocks.page.goto).mockResolvedValue(mocks.response);
     mocked(mocks.page.$).mockResolvedValue(({} as unknown) as ElementHandle<Element>);
+    mocked(mocks.page.goto).mockResolvedValue(mocks.response);
+    mocked(mocks.page.target).mockReturnValue(mocks.target);
     mocked(mocks.page.url).mockReturnValue('');
+    mocked(mocks.page.waitForResponse).mockImplementation(async (fn) => {
+      (fn as (response: Response) => boolean)(({
+        url: () => 'https://www.amazon.com/b2b/reports/download'
+      } as unknown) as Response);
+      return {} as Response;
+    });
     mocked(mocks.response.ok).mockReturnValue(true);
+    mocked(mocks.target.createCDPSession).mockResolvedValue(mocks.cdpSession);
+    mocked(puppeteer.launch).mockResolvedValue(mocks.browser);
+    mocked(readdir).mockResolvedValue([('01-Dec-2020_to_31-Dec-2020.csv' as unknown) as Dirent]);
+    mocked(tmpdir).mockReturnValue('/tmp/');
+    mocked(uuidv4).mockReturnValue('5fb041e4-ad7a-41d4-879f-d1ec1919201a');
+    mocked(watch).mockImplementation((_filename: PathLike, fn) => {
+      (fn as (event: string, filename: string) => void)('rename', '01-Dec-2020_to_31-Dec-2020.csv');
+      return ({ close: jest.fn() } as unknown) as FSWatcher;
+    });
 
     mockdate.set('2020-01-01T00:00:00.000Z');
   });
@@ -79,7 +107,7 @@ describe('AmazonScraper', () => {
         password: 'test123'
       });
 
-      await scraper.getOrders().next();
+      await scraper.getItems().next();
 
       expect(mocked(mocks.page.type)).toHaveBeenCalledWith(
         'input[name=email]',
@@ -98,7 +126,7 @@ describe('AmazonScraper', () => {
         password: 'test123'
       });
 
-      await expect(scraper.getOrders().next()).rejects.toThrow(
+      await expect(scraper.getItems().next()).rejects.toThrow(
         '2FA code requested, but neither otpSecret nor otpFn were provided'
       );
     });
@@ -112,7 +140,7 @@ describe('AmazonScraper', () => {
         otpSecret: 'GVYX4RKDFYXXMNDJ'
       });
 
-      await scraper.getOrders().next();
+      await scraper.getItems().next();
 
       expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=otpCode]', '930899');
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('input[name=rememberDevice]');
@@ -127,7 +155,7 @@ describe('AmazonScraper', () => {
         otpFn: async () => '123456'
       });
 
-      await scraper.getOrders().next();
+      await scraper.getItems().next();
 
       expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=otpCode]', '123456');
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('input[name=rememberDevice]');
@@ -145,7 +173,7 @@ describe('AmazonScraper', () => {
         password: 'test123'
       });
 
-      await scraper.getOrders().next();
+      await scraper.getItems().next();
 
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('a[id*=skip]');
     });
@@ -159,7 +187,7 @@ describe('AmazonScraper', () => {
         password: 'test123'
       });
 
-      await expect(scraper.getOrders().next()).rejects.toThrow('No sign-out link detected');
+      await expect(scraper.getItems().next()).rejects.toThrow('No sign-out link detected');
     });
 
     it('should throw error on bad response', async () => {
@@ -171,15 +199,12 @@ describe('AmazonScraper', () => {
         password: 'test123'
       });
 
-      await expect(scraper.getOrders().next()).rejects.toThrow('Failed request');
+      await expect(scraper.getItems().next()).rejects.toThrow('Failed request');
     });
   });
 
-  describe('getOrders', () => {
+  describe('getItems', () => {
     let scraper: AmazonScraper;
-    let pages: {
-      [index: string]: Array<{ [selector: string]: Array<{ [attr: string]: string }> }>;
-    };
 
     beforeEach(() => {
       scraper = new AmazonScraper({
@@ -187,205 +212,67 @@ describe('AmazonScraper', () => {
         password: 'test123'
       });
 
-      pages = {
-        '0': [
-          {
-            '.value': [
-              { textContent: 'February 29, 2020' },
-              { textContent: '$13.85' },
-              { textContent: 'Scrandleton Sprunt' },
-              { textContent: '123-6543210-0123456' }
-            ]
-          },
-          {
-            '.value': [
-              { textContent: 'January 20, 2020' },
-              { textContent: '$107.95' },
-              { textContent: '098-1234567-7654321' }
-            ]
-          },
-          {
-            '.value': [
-              { textContent: 'January 1, 2020' },
-              { textContent: '$10' },
-              { textContent: 'Scrandleton Sprunt' },
-              { textContent: '876-4567890-0987654' }
-            ]
-          }
-        ],
-        '10': [
-          {
-            '.value': [
-              { textContent: 'February 29, 2019' },
-              { textContent: '$13.85' },
-              { textContent: 'Scrandleton Sprunt' },
-              { textContent: '223-6543210-0123456' }
-            ]
-          },
-          {
-            '.value': [
-              { textContent: 'January 20, 2019' },
-              { textContent: '$107.95' },
-              { textContent: '198-1234567-7654321' }
-            ]
-          },
-          {
-            '.value': [
-              { textContent: 'January 1, 2019' },
-              { textContent: '$10' },
-              { textContent: 'Scrandleton Sprunt' },
-              { textContent: 'D01-4567890-0987654' }
-            ]
-          }
-        ]
-      };
-
-      let orderInfos: typeof pages[0];
-
-      mocked(mocks.page.goto).mockImplementation(async (url: string) => {
-        const { startIndex } = url.match(/startIndex=(?<startIndex>\d+)/)?.groups ?? {};
-        if (startIndex) {
-          orderInfos = pages[startIndex] ?? [];
-        } else {
-          orderInfos = [];
-        }
-
-        return mocks.response;
-      });
-
-      mocked(mocks.page.$$eval).mockImplementation(
-        async <R, X1, X2>(
-          selector: string,
-          fn: (els: Array<Element>, x1: X1, x2: X2) => R | Promise<R>,
-          x1: X1,
-          x2: X2
-        ) => {
-          if (selector !== '.order-info') {
-            return [];
-          }
-
-          return fn(
-            orderInfos.map(
-              (orderInfo) =>
-                (({
-                  querySelectorAll: (selector: string) => orderInfo[selector]
-                } as unknown) as Element)
-            ),
-            x1,
-            x2
-          );
-        }
+      mocked(createReadStream).mockImplementation(() =>
+        jest.requireActual('fs').createReadStream(appRootPath.resolve('test-data/items.csv'))
       );
     });
 
-    it('should return order info', async () => {
-      const results = [];
-      for await (const order of scraper.getOrders()) {
-        results.push(order);
+    it('should return item for each row in report', async () => {
+      const items: Array<OrderItem> = [];
+      for await (const item of scraper.getItems()) {
+        items.push(item);
       }
 
-      expect(results).toEqual([
-        {
-          id: '123-6543210-0123456',
-          date: 'February 29, 2020',
-          shipTo: 'Scrandleton Sprunt',
-          total: '$13.85'
-        },
-        { id: '098-1234567-7654321', date: 'January 20, 2020', total: '$107.95' },
-        {
-          id: '876-4567890-0987654',
-          date: 'January 1, 2020',
-          shipTo: 'Scrandleton Sprunt',
-          total: '$10'
-        },
-        {
-          date: 'February 29, 2019',
-          id: '223-6543210-0123456',
-          shipTo: 'Scrandleton Sprunt',
-          total: '$13.85'
-        },
-        {
-          date: 'January 20, 2019',
-          id: '198-1234567-7654321',
-          total: '$107.95'
-        },
-        {
-          date: 'January 1, 2019',
-          id: 'D01-4567890-0987654',
-          shipTo: 'Scrandleton Sprunt',
-          total: '$10'
-        }
-      ]);
+      expect(items).toHaveLength(3);
+      expect(items).toMatchSnapshot();
     });
 
-    it('should throw error on failure to parse order ID', async () => {
-      pages[0].push({
-        '.value': [
-          { textContent: 'December 25, 2019' },
-          { textContent: '$95.00' },
-          { textContent: 'weird content' }
-        ]
+    it('should should save to correct directory', async () => {
+      for await (const _ of scraper.getItems()) {
+      }
+
+      expect(mocked(mocks.cdpSession.send)).toBeCalledWith('Browser.setDownloadBehavior', {
+        behavior: 'allow',
+        downloadPath: '/tmp/amzscrKudNUt'
       });
-
-      await expect(async () => {
-        for await (const _ of scraper.getOrders()) {
-        }
-      }).rejects.toThrow('Failed to parse order ID');
     });
 
-    it('should throw error on too few values', async () => {
-      pages[0].push({
-        '.value': [{ textContent: 'December 25, 2019' }, { textContent: '$95.00' }]
-      });
-
-      await expect(async () => {
-        for await (const _ of scraper.getOrders()) {
-        }
-      }).rejects.toThrow('Order info has fewer values than expected');
-    });
-
-    it('should stop paging at limit', async () => {
-      const results = [];
-      for await (const order of scraper.getOrders({ limit: 10 })) {
-        results.push(order);
+    it('should use provided dates to retrieve report', async () => {
+      for await (const _ of scraper.getItems({
+        startDate: new Date('2020-01-07T00:00:00.000Z'),
+        endDate: new Date('2021-02-14T00:00:00.000Z')
+      })) {
       }
 
-      expect(results.map((r) => r.id)).toEqual([
-        '123-6543210-0123456',
-        '098-1234567-7654321',
-        '876-4567890-0987654'
-      ]);
+      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-day-start', '6');
+      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-month-start', '1');
+      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-year-start', '2020');
+      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-day-end', '13');
+      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-month-end', '2');
+      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-year-end', '2021');
     });
 
-    it('start from given startIndex', async () => {
-      const results = [];
-      for await (const order of scraper.getOrders({ startIndex: 10 })) {
-        results.push(order);
+    it('should delete report after retrieval', async () => {
+      const fakeElements = ([{ click: jest.fn() }] as unknown) as Array<ElementHandle<Element>>;
+      mocked(mocks.page.$x).mockResolvedValue(fakeElements);
+
+      for await (const _ of scraper.getItems()) {
       }
 
-      expect(results.map((r) => r.id)).toEqual([
-        '223-6543210-0123456',
-        '198-1234567-7654321',
-        'D01-4567890-0987654'
-      ]);
-    });
-
-    it('should handle years in timePeriod', async () => {
-      for await (const _ of scraper.getOrders({ timePeriod: 2020 })) {
-      }
-
-      expect(mocked(mocks.page.goto)).toBeCalledWith(
-        'https://www.amazon.com/gp/your-account/order-history?orderFilter=year-2020&startIndex=0'
+      expect(mocked(mocks.page.$x)).toHaveBeenCalledWith(
+        '//input[@name="delete-report" and ancestor::tr[contains(., \'amzscr-5fb041e4-ad7a-41d4-879f-d1ec1919201a\')]]'
       );
+      expect(fakeElements[0].click).toBeCalled();
     });
 
-    it('should handle LAST_3_MONTHS in timePeriod', async () => {
-      for await (const _ of scraper.getOrders({ timePeriod: TimePeriod.LAST_3_MONTHS })) {
+    it('should delete report on disk', async () => {
+      const fakeElements = ([{ click: jest.fn() }] as unknown) as Array<ElementHandle<Element>>;
+      mocked(mocks.page.$x).mockResolvedValue(fakeElements);
+
+      for await (const _ of scraper.getItems()) {
       }
 
-      expect(mocked(mocks.page.goto)).toBeCalledWith(
-        'https://www.amazon.com/gp/your-account/order-history?orderFilter=months-3&startIndex=0'
-      );
+      expect(unlink).toBeCalledWith('/tmp/amzscrKudNUt/01-Dec-2020_to_31-Dec-2020.csv');
     });
   });
 });
