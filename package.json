@@ -6,7 +6,7 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "build": "tsc -b src",
-    "clean": "rm -rf lib",
+    "clean": "rm -rf buildcache coverage lib test-output",
     "commit": "cz",
     "coverage": "jest --coverage --no-cache",
     "lint": "eslint src",

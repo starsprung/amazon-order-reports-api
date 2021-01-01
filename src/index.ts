@@ -1,8 +1,8 @@
 import camelcase from 'camelcase';
 import csv from 'csv-parse';
-import { DateTime } from 'luxon';
 import { createReadStream, watch } from 'fs';
 import { mkdtemp, readdir, unlink } from 'fs/promises';
+import { DateTime } from 'luxon';
 import { tmpdir } from 'os';
 import { authenticator } from 'otplib';
 import { join } from 'path';
@@ -31,48 +31,59 @@ export interface Options {
   username: string;
 }
 
-export interface OrderItem {
+export interface ReportOptions {
+  startDate: Date;
+  endDate: Date;
+}
+
+interface Report {
+  asinIsbn: string;
+  buyerName: string;
+  category: string;
+  groupName: string;
   orderDate: Date;
   orderId: string;
-  title: string;
-  category: string;
-  asinIsbn: string;
-  unspscCode: string;
-  website: string;
-  releaseDate?: Date;
-  condition: string;
+  purchaseOrderNumber?: string;
+  quantity: number;
   seller: string;
   sellerCredentials: string;
-  listPricePerUnit: number;
-  purchasePricePerUnit: number;
-  quantity: number;
-  paymentInstrumentType: string;
-  purchaseOrderNumber?: string;
-  poLineNumber?: string;
-  orderingCustomerEmail: string;
-  shipmentDate?: Date;
-  shippingAddressName?: string;
-  shippingAddressStreet1?: string;
-  shippingAddressStreet2?: string;
-  shippingAddressCity?: string;
-  shippingAddressState?: string;
-  shippingAddressZip?: string;
-  orderStatus?: string;
+  taxExemptionApplied: string;
+  title: string;
+  website: string;
+}
+
+export interface OrderItem extends Report {
   carrierNameTrackingNumber?: string;
+  condition: string;
+  currency: string;
+  exemptionOptOut: string;
   itemSubtotal: number;
   itemSubtotalTax: number;
   itemTotal: number;
-  taxExemptionApplied: string;
+  listPricePerUnit: number;
+  orderStatus?: string;
+  orderingCustomerEmail: string;
+  paymentInstrumentType: string;
+  poLineNumber?: string;
+  purchasePricePerUnit: number;
+  releaseDate?: Date;
+  shipmentDate?: Date;
+  shippingAddressCity?: string;
+  shippingAddressName?: string;
+  shippingAddressState?: string;
+  shippingAddressStreet1?: string;
+  shippingAddressStreet2?: string;
+  shippingAddressZip?: string;
   taxExemptionType: string;
-  exemptionOptOut: string;
-  buyerName: string;
-  currency: string;
-  groupName: string;
+  unspscCode: string;
 }
 
-export interface GetItemsOptions {
-  startDate: Date;
-  endDate: Date;
+export interface Refund extends Report {
+  refundAmount: number;
+  refundCondition: string;
+  refundDate: Date;
+  refundReason: string;
+  refundTaxAmount: number;
 }
 
 enum ReportType {
@@ -108,6 +119,11 @@ enum Urls {
   SIGN_IN = 'ap/signin'
 }
 
+interface GetReportReturnType {
+  [ReportType.ITEMS]: OrderItem;
+  [ReportType.REFUNDS]: Refund;
+}
+
 const identity = <T>(x: T): T => x;
 // Amazon apparently uses Pacific time for all US users
 const parseDate = (d: string): Date =>
@@ -140,32 +156,63 @@ export default class AmazonScraper {
   }
 
   async *getItems(
-    options: GetItemsOptions = {
+    options: ReportOptions = {
       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       endDate: new Date()
     }
-  ): AsyncGenerator<OrderItem, void, undefined> {
-    await this._navigate(REPORTS_PATH);
+  ): AsyncGenerator<OrderItem> {
+    yield* this._getReport(ReportType.ITEMS, options, AmazonScraper._parseOrderItemRecord);
+  }
 
-    const { startDate, endDate } = options;
-
-    const reportName = await this._fillReportForm(ReportType.ITEMS, startDate, endDate);
-    const reportPath = await this._downloadReport();
-
-    await this._deleteReport(reportName);
-
-    const csvStream = createReadStream(reportPath).pipe(
-      csv({
-        columns: (headers: Array<string>) =>
-          headers.map((header) => camelcase(header.replace(/\W/g, ' ')))
-      })
-    );
-
-    for await (const record of csvStream) {
-      yield this._parseOrderItemRecord(record);
+  async *getRefunds(
+    options: ReportOptions = {
+      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      endDate: new Date()
     }
+  ): AsyncGenerator<Refund> {
+    yield* this._getReport(ReportType.REFUNDS, options, AmazonScraper._parseRefundRecord);
+  }
 
-    await unlink(reportPath);
+  private static _parseOrderItemRecord(record: { [key: string]: string }): OrderItem {
+    return (Object.fromEntries(
+      Object.entries(record)
+        .filter(([, value]) => value !== '')
+        .map(([key, value]) => {
+          const transformFn =
+            ({
+              itemSubtotal: parsePrice,
+              itemSubtotalTax: parsePrice,
+              itemTotal: parsePrice,
+              listPricePerUnit: parsePrice,
+              orderDate: parseDate,
+              purchasePricePerUnit: parsePrice,
+              quantity: parseInt,
+              releaseDate: parseDate,
+              shipmentDate: parseDate
+            } as { [columnValue: string]: (value: unknown) => unknown })[key] ?? identity;
+
+          return [key, transformFn(value)];
+        })
+    ) as unknown) as OrderItem;
+  }
+
+  private static _parseRefundRecord(record: { [key: string]: string }): Refund {
+    return (Object.fromEntries(
+      Object.entries(record)
+        .filter(([, value]) => value !== '')
+        .map(([key, value]) => {
+          const transformFn =
+            ({
+              orderDate: parseDate,
+              quantity: parseInt,
+              refundAmount: parsePrice,
+              refundDate: parseDate,
+              refundTaxAmount: parsePrice
+            } as { [columnValue: string]: (value: unknown) => unknown })[key] ?? identity;
+
+          return [key, transformFn(value)];
+        })
+    ) as unknown) as Refund;
   }
 
   private async _assert(selector: string, message?: string): Promise<void> {
@@ -264,6 +311,34 @@ export default class AmazonScraper {
     return this.#page;
   }
 
+  async *_getReport<T extends ReportType>(
+    reportType: T,
+    options: ReportOptions,
+    parseFn: (record: { [key: string]: string }) => GetReportReturnType[T]
+  ): AsyncGenerator<GetReportReturnType[T]> {
+    await this._navigate(REPORTS_PATH);
+
+    const { startDate, endDate } = options;
+
+    const reportName = await this._fillReportForm(reportType, startDate, endDate);
+    const reportPath = await this._downloadReport();
+
+    await this._deleteReport(reportName);
+
+    const csvStream = createReadStream(reportPath).pipe(
+      csv({
+        columns: (headers: Array<string>) =>
+          headers.map((header) => camelcase(header.replace(/\W/g, ' ')))
+      })
+    );
+
+    for await (const record of csvStream) {
+      yield parseFn(record);
+    }
+
+    await unlink(reportPath);
+  }
+
   private async _handleLogin(): Promise<void> {
     const { username, password } = this.#options;
     const page = await this._getPage();
@@ -329,29 +404,6 @@ export default class AmazonScraper {
     }
 
     await this._handleLogin();
-  }
-
-  private _parseOrderItemRecord(record: { [key: string]: string }): OrderItem {
-    return (Object.fromEntries(
-      Object.entries(record)
-        .filter(([, value]) => value !== '')
-        .map(([key, value]) => {
-          const transformFn =
-            ({
-              orderDate: parseDate,
-              releaseDate: parseDate,
-              shipmentDate: parseDate,
-              listPricePerUnit: parsePrice,
-              purchasePricePerUnit: parsePrice,
-              quantity: parseInt,
-              itemSubtotal: parsePrice,
-              itemSubtotalTax: parsePrice,
-              itemTotal: parsePrice
-            } as { [columnValue: string]: (value: unknown) => unknown })[key] ?? identity;
-
-          return [key, transformFn(value)];
-        })
-    ) as unknown) as OrderItem;
   }
 }
 

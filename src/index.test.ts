@@ -7,9 +7,9 @@ import { ElementHandle, Response } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import { Readable } from 'stream';
 import { mocked } from 'ts-jest/utils';
-import AmazonScraper, { OrderItem } from './index';
-import { mocks } from './__mocks__/puppeteer-extra';
 import { v4 as uuidv4 } from 'uuid';
+import AmazonScraper, { OrderItem, Refund } from './index';
+import { mocks } from './__mocks__/puppeteer-extra';
 
 jest.mock('fs');
 jest.mock('fs/promises');
@@ -273,6 +273,31 @@ describe('AmazonScraper', () => {
       }
 
       expect(unlink).toBeCalledWith('/tmp/amzscrKudNUt/01-Dec-2020_to_31-Dec-2020.csv');
+    });
+  });
+
+  describe('getRefunds', () => {
+    let scraper: AmazonScraper;
+
+    beforeEach(() => {
+      scraper = new AmazonScraper({
+        username: 'testuser@example.com',
+        password: 'test123'
+      });
+
+      mocked(createReadStream).mockImplementation(() =>
+        jest.requireActual('fs').createReadStream(appRootPath.resolve('test-data/refunds.csv'))
+      );
+    });
+
+    it('should return refund for each row in report', async () => {
+      const items: Array<Refund> = [];
+      for await (const item of scraper.getRefunds()) {
+        items.push(item);
+      }
+
+      expect(items).toHaveLength(3);
+      expect(items).toMatchSnapshot();
     });
   });
 });
