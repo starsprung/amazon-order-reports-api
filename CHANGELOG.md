@@ -1,3 +1,15 @@
+# [3.0.0](https://github.com/starsprung/amazon-order-reports-api/compare/v2.0.1...v3.0.0) (2021-01-01)
+
+
+### Code Refactoring
+
+* more consistent naming ([b467cc8](https://github.com/starsprung/amazon-order-reports-api/commit/b467cc8e4631621d75d4a64107d5c958f98baa8b))
+
+
+### BREAKING CHANGES
+
+* renamed AmazonOrderApi tp AmazonOrderReportsApi
+
 ## [2.0.1](https://github.com/starsprung/amazon-order-reports-api/compare/v2.0.0...v2.0.1) (2021-01-01)
 
 ### Bug Fixes
