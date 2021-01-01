@@ -1,3 +1,15 @@
+# [2.0.0](https://github.com/starsprung/amazon-order-reports-api/compare/v1.1.0...v2.0.0) (2021-01-01)
+
+
+### Code Refactoring
+
+* move default export to named export ([ae53320](https://github.com/starsprung/amazon-order-reports-api/commit/ae53320a7cf3adb96973ad4e3b9edfed0742b5b4))
+
+
+### BREAKING CHANGES
+
+* default export moved to AmazonOrderApi
+
 # [1.1.0](https://github.com/starsprung/amazon-order-reports-api/compare/v1.0.0...v1.1.0) (2021-01-01)
 
 
