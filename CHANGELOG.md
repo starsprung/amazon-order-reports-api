@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/starsprung/amazon-order-reports-api/compare/v1.0.0...v1.1.0) (2021-01-01)
+
+
+### Features
+
+* add getRefunds ([8f7fe60](https://github.com/starsprung/amazon-order-reports-api/commit/8f7fe60c71a5ab2fe5caf2d27f7fee003a68cc95))
+
 # 1.0.0 (2021-01-01)
 
 
