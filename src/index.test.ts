@@ -8,7 +8,7 @@ import puppeteer from 'puppeteer-extra';
 import { Readable } from 'stream';
 import { mocked } from 'ts-jest/utils';
 import { v4 as uuidv4 } from 'uuid';
-import AmazonScraper, { OrderItem, Refund } from './index';
+import { AmazonOrderApi, OrderItem, Refund } from './index';
 import { mocks } from './__mocks__/puppeteer-extra';
 
 jest.mock('fs');
@@ -16,7 +16,7 @@ jest.mock('fs/promises');
 jest.mock('os');
 jest.mock('uuid');
 
-describe('AmazonScraper', () => {
+describe('AmazonOrderApi', () => {
   beforeEach(() => {
     mocked(createReadStream).mockReturnValue((Readable.from([]) as unknown) as ReadStream);
     mocked(mkdtemp).mockResolvedValue('/tmp/amzscrKudNUt');
@@ -56,7 +56,7 @@ describe('AmazonScraper', () => {
 
   describe('start', () => {
     it('should launch puppeteer with given options', async () => {
-      const scraper = new AmazonScraper({
+      const api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123',
         puppeteerOpts: {
@@ -67,7 +67,7 @@ describe('AmazonScraper', () => {
         }
       });
 
-      await scraper.start();
+      await api.start();
 
       expect(mocked(puppeteer.launch)).toBeCalledWith({
         defaultViewport: {
@@ -80,7 +80,7 @@ describe('AmazonScraper', () => {
 
   describe('stop', () => {
     it('should close puppeteer', async () => {
-      const scraper = new AmazonScraper({
+      const api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123',
         puppeteerOpts: {
@@ -91,8 +91,8 @@ describe('AmazonScraper', () => {
         }
       });
 
-      await scraper.start();
-      await scraper.stop();
+      await api.start();
+      await api.stop();
 
       expect(mocked(mocks.browser.close)).toBeCalled();
     });
@@ -102,12 +102,12 @@ describe('AmazonScraper', () => {
     it('should log in with given credentials', async () => {
       mockUrls('https://www.amazon.com/ap/signin');
 
-      const scraper = new AmazonScraper({
+      const api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
 
-      await scraper.getItems().next();
+      await api.getItems().next();
 
       expect(mocked(mocks.page.type)).toHaveBeenCalledWith(
         'input[name=email]',
@@ -121,12 +121,12 @@ describe('AmazonScraper', () => {
     it('should throw error if OTP code is required, but no OTP option is provided', async () => {
       mockUrls('https://www.amazon.com/ap/signin', 'https://www.amazon.com/ap/mfa');
 
-      const scraper = new AmazonScraper({
+      const api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
 
-      await expect(scraper.getItems().next()).rejects.toThrow(
+      await expect(api.getItems().next()).rejects.toThrow(
         '2FA code requested, but neither otpSecret nor otpFn were provided'
       );
     });
@@ -134,13 +134,13 @@ describe('AmazonScraper', () => {
     it('should login using generated OTP code if otpSecret is provided', async () => {
       mockUrls('https://www.amazon.com/ap/signin', 'https://www.amazon.com/ap/mfa');
 
-      const scraper = new AmazonScraper({
+      const api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123',
         otpSecret: 'GVYX4RKDFYXXMNDJ'
       });
 
-      await scraper.getItems().next();
+      await api.getItems().next();
 
       expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=otpCode]', '930899');
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('input[name=rememberDevice]');
@@ -149,13 +149,13 @@ describe('AmazonScraper', () => {
     it('should login using OTP code provided by otpFn', async () => {
       mockUrls('https://www.amazon.com/ap/signin', 'https://www.amazon.com/ap/mfa');
 
-      const scraper = new AmazonScraper({
+      const api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123',
         otpFn: async () => '123456'
       });
 
-      await scraper.getItems().next();
+      await api.getItems().next();
 
       expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=otpCode]', '123456');
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('input[name=rememberDevice]');
@@ -168,12 +168,12 @@ describe('AmazonScraper', () => {
         'https://www.amazon.com/ap/accountfixup'
       );
 
-      const scraper = new AmazonScraper({
+      const api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
 
-      await scraper.getItems().next();
+      await api.getItems().next();
 
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('a[id*=skip]');
     });
@@ -182,32 +182,32 @@ describe('AmazonScraper', () => {
       mockUrls('https://www.amazon.com/ap/signin');
       mocked(mocks.page.$).mockResolvedValue(null);
 
-      const scraper = new AmazonScraper({
+      const api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
 
-      await expect(scraper.getItems().next()).rejects.toThrow('No sign-out link detected');
+      await expect(api.getItems().next()).rejects.toThrow('No sign-out link detected');
     });
 
     it('should throw error on bad response', async () => {
       mockUrls('https://www.amazon.com/ap/signin');
       mocked(mocks.response.ok).mockReturnValue(false);
 
-      const scraper = new AmazonScraper({
+      const api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
 
-      await expect(scraper.getItems().next()).rejects.toThrow('Failed request');
+      await expect(api.getItems().next()).rejects.toThrow('Failed request');
     });
   });
 
   describe('getItems', () => {
-    let scraper: AmazonScraper;
+    let api: AmazonOrderApi;
 
     beforeEach(() => {
-      scraper = new AmazonScraper({
+      api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
@@ -219,7 +219,7 @@ describe('AmazonScraper', () => {
 
     it('should return item for each row in report', async () => {
       const items: Array<OrderItem> = [];
-      for await (const item of scraper.getItems()) {
+      for await (const item of api.getItems()) {
         items.push(item);
       }
 
@@ -228,7 +228,7 @@ describe('AmazonScraper', () => {
     });
 
     it('should should save to correct directory', async () => {
-      for await (const _ of scraper.getItems()) {
+      for await (const _ of api.getItems()) {
       }
 
       expect(mocked(mocks.cdpSession.send)).toBeCalledWith('Browser.setDownloadBehavior', {
@@ -238,7 +238,7 @@ describe('AmazonScraper', () => {
     });
 
     it('should use provided dates to retrieve report', async () => {
-      for await (const _ of scraper.getItems({
+      for await (const _ of api.getItems({
         startDate: new Date('2020-01-07T00:00:00.000Z'),
         endDate: new Date('2021-02-14T00:00:00.000Z')
       })) {
@@ -256,7 +256,7 @@ describe('AmazonScraper', () => {
       const fakeElements = ([{ click: jest.fn() }] as unknown) as Array<ElementHandle<Element>>;
       mocked(mocks.page.$x).mockResolvedValue(fakeElements);
 
-      for await (const _ of scraper.getItems()) {
+      for await (const _ of api.getItems()) {
       }
 
       expect(mocked(mocks.page.$x)).toHaveBeenCalledWith(
@@ -269,7 +269,7 @@ describe('AmazonScraper', () => {
       const fakeElements = ([{ click: jest.fn() }] as unknown) as Array<ElementHandle<Element>>;
       mocked(mocks.page.$x).mockResolvedValue(fakeElements);
 
-      for await (const _ of scraper.getItems()) {
+      for await (const _ of api.getItems()) {
       }
 
       expect(unlink).toBeCalledWith('/tmp/amzscrKudNUt/01-Dec-2020_to_31-Dec-2020.csv');
@@ -277,10 +277,10 @@ describe('AmazonScraper', () => {
   });
 
   describe('getRefunds', () => {
-    let scraper: AmazonScraper;
+    let api: AmazonOrderApi;
 
     beforeEach(() => {
-      scraper = new AmazonScraper({
+      api = new AmazonOrderApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
@@ -292,7 +292,7 @@ describe('AmazonScraper', () => {
 
     it('should return refund for each row in report', async () => {
       const items: Array<Refund> = [];
-      for await (const item of scraper.getRefunds()) {
+      for await (const item of api.getRefunds()) {
         items.push(item);
       }
 

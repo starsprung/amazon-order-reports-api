@@ -21,21 +21,6 @@ const DOWNLOAD_DIR_PREFIX = 'amzscr';
 
 puppeteer.use(StealthPlugin());
 
-export interface Options {
-  baseUrl?: string;
-  logLevel?: LogLevel;
-  otpFn?: () => string | Promise<string>;
-  otpSecret?: string;
-  password: string;
-  puppeteerOpts?: LaunchOptions;
-  username: string;
-}
-
-export interface ReportOptions {
-  startDate: Date;
-  endDate: Date;
-}
-
 interface Report {
   asinIsbn: string;
   buyerName: string;
@@ -119,28 +104,77 @@ enum Urls {
   SIGN_IN = 'ap/signin'
 }
 
+type AmazonOrderApiOptions = ConstructorParameters<typeof AmazonOrderApi>[0];
+
 interface GetReportReturnType {
   [ReportType.ITEMS]: OrderItem;
   [ReportType.REFUNDS]: Refund;
 }
 
 const identity = <T>(x: T): T => x;
-// Amazon apparently uses Pacific time for all US users
+// Amazon apparently uses Pacific time for all US users ?
 const parseDate = (d: string): Date =>
   DateTime.fromFormat(d, 'MM/dd/yy', { zone: 'America/Los_Angeles' }).toJSDate();
 const parsePrice = (p: string) => parseFloat(p.replace(/[^\d.]/g, ''));
 
-export default class AmazonScraper {
+export class AmazonOrderApi {
   #browser?: Browser;
   #logger: Logger;
-  #options: Options;
+  #options: AmazonOrderApiOptions;
   #page?: Page;
 
-  constructor(options: Options) {
+  constructor(options: {
+    /**
+     * Base URL to use for Amazon.
+     * @default https://www.amazon.com
+     */
+    baseUrl?: string;
+
+    /**
+     * Emit log messages at this level. Currently only {@link LogLevel.DEBUG} is used.
+     * @default {@link LogLevel.NONE}
+     */
+    logLevel?: LogLevel;
+
+    /**
+     * If provided, otpFn will be called during login if a OTP code is required.
+     * This option will be ignored if **otpSecret** is provided.
+     */
+    otpFn?: () => string | Promise<string>;
+
+    /**
+     * If provided, otpSecret will be used to generate an OTP code during login.
+     * This is the code you get during the Authenticator App setup on the 2SV Settings page.
+     * Care should be taken to store this securely. An insecurely stored OTP secret is the same
+     * as not having OTP at all.
+     */
+    otpSecret?: string;
+
+    /**
+     * Amazon account password
+     */
+    password: string;
+
+    /**
+     * Puppeteer launch options.
+     * See the [Puppeteer docs]{@link https://pptr.dev/#?product=Puppeteer&version=v5.5.0&show=api-puppeteerlaunchoptions}
+     * for more info.
+     */
+    puppeteerOpts?: LaunchOptions;
+
+    /**
+     * Amazon account username
+     */
+    username: string;
+  }) {
     this.#logger = createLogger(options.logLevel ?? LogLevel.NONE);
     this.#options = options;
   }
 
+  /**
+   * Start the scraper. This will be called automatically by
+   * {@link getItems} and {@link getRefunds}, but you may also call it manually.
+   */
   async start(): Promise<void> {
     if (!this.#browser) {
       this.#browser = await puppeteer.launch(this.#options.puppeteerOpts ?? {});
@@ -151,26 +185,49 @@ export default class AmazonScraper {
     }
   }
 
+  /**
+   * Stop the scraper.
+   */
   async stop(): Promise<void> {
     await this.#browser?.close();
+    this.#page = undefined;
+    this.#browser = undefined;
   }
 
+  /**
+   * Retrieve ordered items in the given date range. If no date range is given, the previous
+   * 30 days will be used.
+   */
   async *getItems(
-    options: ReportOptions = {
+    options: {
+      /** Start of date range to report. */
+      startDate: Date;
+      /** End of date range to report. */
+      endDate: Date;
+    } = {
       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       endDate: new Date()
     }
   ): AsyncGenerator<OrderItem> {
-    yield* this._getReport(ReportType.ITEMS, options, AmazonScraper._parseOrderItemRecord);
+    yield* this._getReport(ReportType.ITEMS, options, AmazonOrderApi._parseOrderItemRecord);
   }
 
+  /**
+   * Retrieve refunds in the given date range. If no date range is given, the previous
+   * 30 days will be used.
+   */
   async *getRefunds(
-    options: ReportOptions = {
+    options: {
+      /** Start of date range to report. */
+      startDate: Date;
+      /** End of date range to report. */
+      endDate: Date;
+    } = {
       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       endDate: new Date()
     }
   ): AsyncGenerator<Refund> {
-    yield* this._getReport(ReportType.REFUNDS, options, AmazonScraper._parseRefundRecord);
+    yield* this._getReport(ReportType.REFUNDS, options, AmazonOrderApi._parseRefundRecord);
   }
 
   private static _parseOrderItemRecord(record: { [key: string]: string }): OrderItem {
@@ -311,9 +368,15 @@ export default class AmazonScraper {
     return this.#page;
   }
 
-  async *_getReport<T extends ReportType>(
+  private async *_getReport<T extends ReportType>(
     reportType: T,
-    options: ReportOptions,
+    options: {
+      startDate: Date;
+      endDate: Date;
+    } = {
+      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      endDate: new Date()
+    },
     parseFn: (record: { [key: string]: string }) => GetReportReturnType[T]
   ): AsyncGenerator<GetReportReturnType[T]> {
     await this._navigate(REPORTS_PATH);
