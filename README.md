@@ -47,6 +47,14 @@ import { AmazonOrderApi } from 'amazon-order-reports-api';
 
 API docs are available on the [docs site](https://docs.starsprung.com/amazon-order-reports-api/)
 
+## Email notifications
+
+As a side effect of generating an order report, Amazon will send an email notification that the order report is ready. This can generate a large volume of emails if reports are retrieved frequently. In many mail providers, an e-mail filter can be used to delete or move these emails. E.g. in Gmail:
+
+```
+from:(no-reply@amazon.com) subject:(Your order history report)
+```
+
 ## License
 
 Copyright 2020 Shaun Starsprung
