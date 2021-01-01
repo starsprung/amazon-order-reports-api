@@ -1,0 +1,24 @@
+name: Docs
+on:
+  workflow_run:
+    workflows: ['Test']
+    branches:
+      - master
+    types:
+      - completed
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        env:
+          DOCS_UPDATE_TOKEN: ${{ secrets.DOCS_UPDATE_TOKEN }}
+        run: |
+          curl
+            --request POST 'https://api.github.com/repos/starsprung/starsprung.github.io/dispatches'
+            --header 'Accept: application/vnd.github.v3+json'
+            --header "Authorization: Bearer ${DOCS_UPDATE_TOKEN}"
+            --header 'Content-Type: application/json'
+            --data-raw '{ "event_type": "build_docs" }'
