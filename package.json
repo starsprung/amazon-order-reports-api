@@ -1,7 +1,7 @@
 {
   "name": "amazon-order-reports-api",
   "version": "3.0.1",
-  "description": "",
+  "description": "Scrapes orders and refunds from Amazon.com",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
