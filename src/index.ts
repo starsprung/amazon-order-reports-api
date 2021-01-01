@@ -108,10 +108,10 @@ enum Urls {
   SIGN_IN = 'ap/signin'
 }
 
-const identity = (x: any) => x;
+const identity = <T>(x: T): T => x;
 // Amazon apparently uses Pacific time for all US users
-const parseDate = (d: string) =>
-  DateTime.fromFormat(d, 'MM/dd/yy', { zone: 'America/Los_Angeles' });
+const parseDate = (d: string): Date =>
+  DateTime.fromFormat(d, 'MM/dd/yy', { zone: 'America/Los_Angeles' }).toJSDate();
 const parsePrice = (p: string) => parseFloat(p.replace(/[^\d.]/g, ''));
 
 export default class AmazonScraper {
@@ -347,7 +347,7 @@ export default class AmazonScraper {
               itemSubtotal: parsePrice,
               itemSubtotalTax: parsePrice,
               itemTotal: parsePrice
-            } as { [columnValue: string]: (value: unknown) => any })[key] ?? identity;
+            } as { [columnValue: string]: (value: unknown) => unknown })[key] ?? identity;
 
           return [key, transformFn(value)];
         })
