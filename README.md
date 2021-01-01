@@ -43,6 +43,10 @@ import { AmazonOrderApi } from 'amazon-order-reports-api';
 })();
 ```
 
+## API
+
+API docs are available on the [docs site](https://docs.starsprung.com/amazon-order-reports-api/)
+
 ## License
 
 Copyright 2020 Shaun Starsprung
