@@ -264,5 +264,15 @@ describe('AmazonScraper', () => {
       );
       expect(fakeElements[0].click).toBeCalled();
     });
+
+    it('should delete report on disk', async () => {
+      const fakeElements = ([{ click: jest.fn() }] as unknown) as Array<ElementHandle<Element>>;
+      mocked(mocks.page.$x).mockResolvedValue(fakeElements);
+
+      for await (const _ of scraper.getItems()) {
+      }
+
+      expect(unlink).toBeCalledWith('/tmp/amzscrKudNUt/01-Dec-2020_to_31-Dec-2020.csv');
+    });
   });
 });
