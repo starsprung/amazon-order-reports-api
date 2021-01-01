@@ -17,6 +17,7 @@
     "test:ci": "jest --ci"
   },
   "author": "Shaun Starsprung <s@starsprung.com>",
+  "repository": "github:starsprung/amazon-order-reports-api",
   "license": "MIT",
   "dependencies": {
     "camelcase": "^5.3.1",
