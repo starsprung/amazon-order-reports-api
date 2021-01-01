@@ -8,7 +8,7 @@ import puppeteer from 'puppeteer-extra';
 import { Readable } from 'stream';
 import { mocked } from 'ts-jest/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { AmazonOrderApi, OrderItem, Refund } from './index';
+import { AmazonOrderReportsApi, OrderItem, Refund } from './index';
 import { mocks } from './__mocks__/puppeteer-extra';
 
 jest.mock('fs');
@@ -16,7 +16,7 @@ jest.mock('fs/promises');
 jest.mock('os');
 jest.mock('uuid');
 
-describe('AmazonOrderApi', () => {
+describe('AmazonOrderReportsApi', () => {
   beforeEach(() => {
     mocked(createReadStream).mockReturnValue((Readable.from([]) as unknown) as ReadStream);
     mocked(mkdtemp).mockResolvedValue('/tmp/amzscrKudNUt');
@@ -56,7 +56,7 @@ describe('AmazonOrderApi', () => {
 
   describe('start', () => {
     it('should launch puppeteer with given options', async () => {
-      const api = new AmazonOrderApi({
+      const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123',
         puppeteerOpts: {
@@ -80,7 +80,7 @@ describe('AmazonOrderApi', () => {
 
   describe('stop', () => {
     it('should close puppeteer', async () => {
-      const api = new AmazonOrderApi({
+      const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123',
         puppeteerOpts: {
@@ -102,7 +102,7 @@ describe('AmazonOrderApi', () => {
     it('should log in with given credentials', async () => {
       mockUrls('https://www.amazon.com/ap/signin');
 
-      const api = new AmazonOrderApi({
+      const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
@@ -121,7 +121,7 @@ describe('AmazonOrderApi', () => {
     it('should throw error if OTP code is required, but no OTP option is provided', async () => {
       mockUrls('https://www.amazon.com/ap/signin', 'https://www.amazon.com/ap/mfa');
 
-      const api = new AmazonOrderApi({
+      const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
@@ -134,7 +134,7 @@ describe('AmazonOrderApi', () => {
     it('should login using generated OTP code if otpSecret is provided', async () => {
       mockUrls('https://www.amazon.com/ap/signin', 'https://www.amazon.com/ap/mfa');
 
-      const api = new AmazonOrderApi({
+      const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123',
         otpSecret: 'GVYX4RKDFYXXMNDJ'
@@ -149,7 +149,7 @@ describe('AmazonOrderApi', () => {
     it('should login using OTP code provided by otpFn', async () => {
       mockUrls('https://www.amazon.com/ap/signin', 'https://www.amazon.com/ap/mfa');
 
-      const api = new AmazonOrderApi({
+      const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123',
         otpFn: async () => '123456'
@@ -168,7 +168,7 @@ describe('AmazonOrderApi', () => {
         'https://www.amazon.com/ap/accountfixup'
       );
 
-      const api = new AmazonOrderApi({
+      const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
@@ -182,7 +182,7 @@ describe('AmazonOrderApi', () => {
       mockUrls('https://www.amazon.com/ap/signin');
       mocked(mocks.page.$).mockResolvedValue(null);
 
-      const api = new AmazonOrderApi({
+      const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
@@ -194,7 +194,7 @@ describe('AmazonOrderApi', () => {
       mockUrls('https://www.amazon.com/ap/signin');
       mocked(mocks.response.ok).mockReturnValue(false);
 
-      const api = new AmazonOrderApi({
+      const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
@@ -204,10 +204,10 @@ describe('AmazonOrderApi', () => {
   });
 
   describe('getItems', () => {
-    let api: AmazonOrderApi;
+    let api: AmazonOrderReportsApi;
 
     beforeEach(() => {
-      api = new AmazonOrderApi({
+      api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123'
       });
@@ -277,10 +277,10 @@ describe('AmazonOrderApi', () => {
   });
 
   describe('getRefunds', () => {
-    let api: AmazonOrderApi;
+    let api: AmazonOrderReportsApi;
 
     beforeEach(() => {
-      api = new AmazonOrderApi({
+      api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123'
       });

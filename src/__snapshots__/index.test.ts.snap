@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`AmazonOrderApi getItems should return item for each row in report 1`] = `
+exports[`AmazonOrderReportsApi getItems should return item for each row in report 1`] = `
 Array [
   Object {
     "asinIsbn": "B06Y5XG33Q",
@@ -92,7 +92,7 @@ Array [
 ]
 `;
 
-exports[`AmazonOrderApi getRefunds should return refund for each row in report 1`] = `
+exports[`AmazonOrderReportsApi getRefunds should return refund for each row in report 1`] = `
 Array [
   Object {
     "asinIsbn": "B07USNDYEK",

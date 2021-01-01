@@ -104,7 +104,7 @@ enum Urls {
   SIGN_IN = 'ap/signin'
 }
 
-type AmazonOrderApiOptions = ConstructorParameters<typeof AmazonOrderApi>[0];
+type AmazonOrderReportsApiOptions = ConstructorParameters<typeof AmazonOrderReportsApi>[0];
 
 interface GetReportReturnType {
   [ReportType.ITEMS]: OrderItem;
@@ -117,10 +117,10 @@ const parseDate = (d: string): Date =>
   DateTime.fromFormat(d, 'MM/dd/yy', { zone: 'America/Los_Angeles' }).toJSDate();
 const parsePrice = (p: string) => parseFloat(p.replace(/[^\d.]/g, ''));
 
-export class AmazonOrderApi {
+export class AmazonOrderReportsApi {
   #browser?: Browser;
   #logger: Logger;
-  #options: AmazonOrderApiOptions;
+  #options: AmazonOrderReportsApiOptions;
   #page?: Page;
 
   constructor(options: {
@@ -172,7 +172,7 @@ export class AmazonOrderApi {
   }
 
   /**
-   * Start the scraper. This will be called automatically by
+   * Start the internal Puppeteer isntance. This will be called automatically by
    * {@link getItems} and {@link getRefunds}, but you may also call it manually.
    */
   async start(): Promise<void> {
@@ -186,7 +186,7 @@ export class AmazonOrderApi {
   }
 
   /**
-   * Stop the scraper.
+   * Stop the internal Puppeteer instance.
    */
   async stop(): Promise<void> {
     await this.#browser?.close();
@@ -209,7 +209,7 @@ export class AmazonOrderApi {
       endDate: new Date()
     }
   ): AsyncGenerator<OrderItem> {
-    yield* this._getReport(ReportType.ITEMS, options, AmazonOrderApi._parseOrderItemRecord);
+    yield* this._getReport(ReportType.ITEMS, options, AmazonOrderReportsApi._parseOrderItemRecord);
   }
 
   /**
@@ -227,7 +227,7 @@ export class AmazonOrderApi {
       endDate: new Date()
     }
   ): AsyncGenerator<Refund> {
-    yield* this._getReport(ReportType.REFUNDS, options, AmazonOrderApi._parseRefundRecord);
+    yield* this._getReport(ReportType.REFUNDS, options, AmazonOrderReportsApi._parseRefundRecord);
   }
 
   private static _parseOrderItemRecord(record: { [key: string]: string }): OrderItem {

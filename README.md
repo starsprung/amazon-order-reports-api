@@ -15,10 +15,10 @@ npm i amazon-order-reports-api
 ## Usage
 
 ```
-import { AmazonOrderApi } from 'amazon-order-reports-api';
+import { AmazonOrderReportsApi } from 'amazon-order-reports-api';
 
 (async () => {
-  const api = new AmazonOrderApi({
+  const api = new AmazonOrderReportsApi({
     username: 'test@example.com',
     password: 'password1234',
     // Or use otpFn
