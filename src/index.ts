@@ -101,6 +101,7 @@ enum Urls {
   ACCOUNT_FIXUP = 'ap/accountfixup',
   DOWNLOAD_REPORT = 'b2b/reports/download',
   MFA = 'ap/mfa',
+  NEW_MFA = 'ap/mfa/new-otp',
   SIGN_IN = 'ap/signin'
 }
 
@@ -420,6 +421,11 @@ export class AmazonOrderReportsApi {
     await page.type(Selectors.PASSWORD_INPUT, password);
     await page.click(Selectors.REMEMBER_ME_INPUT);
     await this._navClick(Selectors.SUBMIT_INPUT);
+
+    if (page.url().includes(Urls.NEW_MFA)) {
+      this.#logger.debug('Using default MFA method');
+      await this._navClick(Selectors.SUBMIT_INPUT);
+    }
 
     // TODO: verify this works for all MFA methods
     if (page.url().includes(Urls.MFA)) {

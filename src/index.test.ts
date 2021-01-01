@@ -51,7 +51,8 @@ describe('AmazonOrderReportsApi', () => {
   });
 
   const mockUrls = (...urls: Array<string>) => {
-    mocked(mocks.page.url).mockImplementation(() => urls.shift() ?? '');
+    const lastUrl = urls.pop();
+    mocked(mocks.page.url).mockImplementation(() => urls.shift() ?? lastUrl ?? '');
   };
 
   describe('start', () => {
@@ -147,7 +148,11 @@ describe('AmazonOrderReportsApi', () => {
     });
 
     it('should login using OTP code provided by otpFn', async () => {
-      mockUrls('https://www.amazon.com/ap/signin', 'https://www.amazon.com/ap/mfa');
+      mockUrls(
+        'https://www.amazon.com/ap/signin',
+        'https://www.amazon.com/ap/mfa/new-otp',
+        'https://www.amazon.com/ap/mfa'
+      );
 
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
@@ -162,11 +167,7 @@ describe('AmazonOrderReportsApi', () => {
     });
 
     it('should skip account fix-up page during login', async () => {
-      mockUrls(
-        'https://www.amazon.com/ap/signin',
-        'https://www.amazon.com/ap/accountfixup',
-        'https://www.amazon.com/ap/accountfixup'
-      );
+      mockUrls('https://www.amazon.com/ap/signin', 'https://www.amazon.com/ap/accountfixup');
 
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
