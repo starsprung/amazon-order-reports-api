@@ -60,6 +60,7 @@
     "semantic-release": "^17.3.0",
     "ts-jest": "^26.4.4",
     "ts-node": "^9.1.1",
+    "typedoc": "^0.20.6",
     "typescript": "^4.1.3"
   },
   "husky": {
