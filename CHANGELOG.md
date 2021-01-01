@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/starsprung/amazon-order-reports-api/compare/v2.0.0...v2.0.1) (2021-01-01)
+
+
+### Bug Fixes
+
+* fix dependencies ([1d3eedc](https://github.com/starsprung/amazon-order-reports-api/commit/1d3eedc6e5677da0243fc8caa75c7ee7dd2bb176))
+
 # [2.0.0](https://github.com/starsprung/amazon-order-reports-api/compare/v1.1.0...v2.0.0) (2021-01-01)
 
 
