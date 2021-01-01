@@ -91,3 +91,56 @@ Array [
   },
 ]
 `;
+
+exports[`AmazonScraper getRefunds should return refund for each row in report 1`] = `
+Array [
+  Object {
+    "asinIsbn": "B07USNDYEK",
+    "buyerName": "Test Man",
+    "category": "COAT",
+    "orderDate": 2020-01-14T08:00:00.000Z,
+    "orderId": "113-5757575-3939393",
+    "quantity": 1,
+    "refundAmount": 75.98,
+    "refundCondition": "Completed",
+    "refundDate": 2020-01-25T08:00:00.000Z,
+    "refundReason": "Customer Return",
+    "refundTaxAmount": 0,
+    "seller": "A Seller",
+    "title": "Some kind of coat",
+    "website": "Amazon.com",
+  },
+  Object {
+    "asinIsbn": "B071UDN9IU",
+    "buyerName": "Test Man",
+    "category": "SHIRT",
+    "orderDate": 2020-02-18T08:00:00.000Z,
+    "orderId": "111-1234567-7654321",
+    "quantity": 1,
+    "refundAmount": 18.99,
+    "refundCondition": "Completed",
+    "refundDate": 2020-02-26T08:00:00.000Z,
+    "refundReason": "Customer Return",
+    "refundTaxAmount": 0,
+    "seller": "Amazon.com",
+    "title": "T-shirt",
+    "website": "Amazon.com",
+  },
+  Object {
+    "asinIsbn": "B0793JNURH",
+    "buyerName": "Test Man",
+    "category": "SHOES",
+    "orderDate": 2020-02-28T08:00:00.000Z,
+    "orderId": "113-9887789-1234543",
+    "quantity": 1,
+    "refundAmount": 159.96,
+    "refundCondition": "Completed",
+    "refundDate": 2020-03-04T08:00:00.000Z,
+    "refundReason": "Customer Return",
+    "refundTaxAmount": 0,
+    "seller": "Amazon.com",
+    "title": "A pair of shoes",
+    "website": "Amazon.com",
+  },
+]
+`;

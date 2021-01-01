@@ -1,0 +1,4 @@
+Order ID,Order Date,Title,Category,ASIN/ISBN,Website,Purchase Order Number,Refund Date,Refund Condition,Refund Amount,Refund Tax Amount,Tax Exemption Applied,Refund Reason,Quantity,Seller,Seller Credentials,Buyer Name,Group Name
+113-5757575-3939393,01/14/20,Some kind of coat,COAT,B07USNDYEK,Amazon.com,,01/25/20,Completed,$75.98,$0.00,,Customer Return,1,A Seller,,Test Man,
+111-1234567-7654321,02/18/20,T-shirt,SHIRT,B071UDN9IU,Amazon.com,,02/26/20,Completed,$18.99,$0.00,,Customer Return,1,Amazon.com,,Test Man,
+113-9887789-1234543,02/28/20,A pair of shoes,SHOES,B0793JNURH,Amazon.com,,03/04/20,Completed,$159.96,$0.00,,Customer Return,1,Amazon.com,,Test Man,
