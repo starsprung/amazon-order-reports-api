@@ -13,11 +13,16 @@ import queryString from 'query-string';
 import { URL } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger, Logger, LogLevel } from './logger';
+import delay from 'delay';
 
 const DEFAULT_BASE_URL = 'https://www.amazon.com';
 const REPORTS_PATH = '/gp/b2b/reports';
 const REPORT_PREFIX = 'amzscr-';
 const DOWNLOAD_DIR_PREFIX = 'amzscr';
+
+// Logging in too quickly can trigger a captcha
+const LOGIN_STEP_DELAY = 1000;
+const LOGIN_TYPING_DELAY = 200;
 
 puppeteer.use(StealthPlugin());
 
@@ -73,7 +78,7 @@ export interface Refund extends Report {
 
 enum ReportType {
   ITEMS = 'ITEMS',
-  REFUNDS = 'REFUNDS'
+  REFUNDS = 'REFUNDS',
 }
 
 enum Selectors {
@@ -94,7 +99,7 @@ enum Selectors {
   REPORT_TYPE_INPUT = '#report-type',
   SIGN_OUT_LINK = 'a[href*=sign-out]',
   SKIP_ACCOUNT_FIXUP_LINK = 'a[id*=skip]',
-  SUBMIT_INPUT = 'input[type=submit]'
+  SUBMIT_INPUT = 'input[type=submit]',
 }
 
 enum Urls {
@@ -102,7 +107,7 @@ enum Urls {
   DOWNLOAD_REPORT = 'b2b/reports/download',
   MFA = 'ap/mfa',
   NEW_MFA = 'ap/mfa/new-otp',
-  SIGN_IN = 'ap/signin'
+  SIGN_IN = 'ap/signin',
 }
 
 type AmazonOrderReportsApiOptions = ConstructorParameters<typeof AmazonOrderReportsApi>[0];
@@ -158,9 +163,9 @@ export class AmazonOrderReportsApi {
     otpSecret?: string;
 
     /**
-     * Amazon account password
+     * Amazon account password. This may be a string or a provider function.
      */
-    password: string;
+    password: string | (() => string | Promise<string>);
 
     /**
      * Puppeteer launch options.
@@ -176,9 +181,9 @@ export class AmazonOrderReportsApi {
     saveCookiesFn?: (cookies: Array<Cookie>) => void | Promise<void>;
 
     /**
-     * Amazon account username
+     * Amazon account username. This may be a string or a provider function.
      */
-    username: string;
+    username: string | (() => string | Promise<string>);
   }) {
     this.#logger = createLogger(options.logLevel ?? LogLevel.NONE);
     this.#options = options;
@@ -224,8 +229,8 @@ export class AmazonOrderReportsApi {
       endDate: Date;
     } = {
       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      endDate: new Date()
-    }
+      endDate: new Date(),
+    },
   ): AsyncGenerator<OrderItem> {
     yield* this._getReport(ReportType.ITEMS, options, AmazonOrderReportsApi._parseOrderItemRecord);
   }
@@ -242,8 +247,8 @@ export class AmazonOrderReportsApi {
       endDate: Date;
     } = {
       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      endDate: new Date()
-    }
+      endDate: new Date(),
+    },
   ): AsyncGenerator<Refund> {
     yield* this._getReport(ReportType.REFUNDS, options, AmazonOrderReportsApi._parseRefundRecord);
   }
@@ -263,11 +268,11 @@ export class AmazonOrderReportsApi {
               purchasePricePerUnit: parsePrice,
               quantity: parseInt,
               releaseDate: parseDate,
-              shipmentDate: parseDate
+              shipmentDate: parseDate,
             } as { [columnValue: string]: (value: unknown) => unknown })[key] ?? identity;
 
           return [key, transformFn(value)];
-        })
+        }),
     ) as unknown) as OrderItem;
   }
 
@@ -282,11 +287,11 @@ export class AmazonOrderReportsApi {
               quantity: parseInt,
               refundAmount: parsePrice,
               refundDate: parseDate,
-              refundTaxAmount: parsePrice
+              refundTaxAmount: parsePrice,
             } as { [columnValue: string]: (value: unknown) => unknown })[key] ?? identity;
 
           return [key, transformFn(value)];
-        })
+        }),
     ) as unknown) as Refund;
   }
 
@@ -301,7 +306,7 @@ export class AmazonOrderReportsApi {
   private async _deleteReport(reportName: string): Promise<void> {
     await this._navClick(
       `//input[${Selectors.DELETE_REPORT} and ancestor::tr[contains(., '${reportName}')]]`,
-      true
+      true,
     );
   }
 
@@ -315,7 +320,7 @@ export class AmazonOrderReportsApi {
     const cdpSession = await page.target().createCDPSession();
     cdpSession.send('Browser.setDownloadBehavior', {
       behavior: 'allow',
-      downloadPath: downloadDir
+      downloadPath: downloadDir,
     });
 
     const [downloadPath] = await Promise.all([
@@ -330,7 +335,7 @@ export class AmazonOrderReportsApi {
         });
       }),
       page.click(Selectors.REPORT_CONFIRM_LINK),
-      page.waitForResponse((r) => r.url().includes(Urls.DOWNLOAD_REPORT))
+      page.waitForResponse((r) => r.url().includes(Urls.DOWNLOAD_REPORT)),
     ]);
 
     return downloadPath;
@@ -339,7 +344,7 @@ export class AmazonOrderReportsApi {
   private async _fillReportForm(
     reportType: ReportType,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<string> {
     const page = await this._getPage();
 
@@ -393,9 +398,9 @@ export class AmazonOrderReportsApi {
       endDate: Date;
     } = {
       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      endDate: new Date()
+      endDate: new Date(),
     },
-    parseFn: (record: { [key: string]: string }) => GetReportReturnType[T]
+    parseFn: (record: { [key: string]: string }) => GetReportReturnType[T],
   ): AsyncGenerator<GetReportReturnType[T]> {
     await this._navigate(REPORTS_PATH);
 
@@ -409,8 +414,8 @@ export class AmazonOrderReportsApi {
     const csvStream = createReadStream(reportPath).pipe(
       csv({
         columns: (headers: Array<string>) =>
-          headers.map((header) => camelcase(header.replace(/\W/g, ' ')))
-      })
+          headers.map((header) => camelcase(header.replace(/\W/g, ' '))),
+      }),
     );
 
     for await (const record of csvStream) {
@@ -422,6 +427,10 @@ export class AmazonOrderReportsApi {
 
   private async _handleLogin(): Promise<void> {
     const { username, password } = this.#options;
+
+    const usernameFn = typeof username === 'string' ? () => username : username;
+    const passwordFn = typeof password === 'string' ? () => password : password;
+
     const page = await this._getPage();
 
     if (!page.url().includes(Urls.SIGN_IN)) {
@@ -431,23 +440,28 @@ export class AmazonOrderReportsApi {
     this.#logger.debug('Login required');
 
     this.#logger.debug('Entering username');
-    await page.type(Selectors.EMAIL_INPUT, username);
+    await page.type(Selectors.EMAIL_INPUT, await usernameFn(), { delay: LOGIN_TYPING_DELAY });
     await this._navClick(Selectors.SUBMIT_INPUT);
 
+    await delay(LOGIN_STEP_DELAY);
+
     this.#logger.debug('Entering password');
-    await page.type(Selectors.PASSWORD_INPUT, password);
+    await page.type(Selectors.PASSWORD_INPUT, await passwordFn(), { delay: LOGIN_TYPING_DELAY });
     await page.click(Selectors.REMEMBER_ME_INPUT);
     await this._navClick(Selectors.SUBMIT_INPUT);
+
+    await delay(LOGIN_STEP_DELAY);
 
     if (page.url().includes(Urls.NEW_MFA)) {
       this.#logger.debug('Using default MFA method');
       await this._navClick(Selectors.SUBMIT_INPUT);
+      await delay(LOGIN_STEP_DELAY);
     }
 
     // TODO: verify this works for all MFA methods
     if (page.url().includes(Urls.MFA)) {
       this.#logger.debug('Entering OTP code');
-      await page.type(Selectors.OTP_INPUT, await this._getOtp());
+      await page.type(Selectors.OTP_INPUT, await this._getOtp(), { delay: LOGIN_TYPING_DELAY });
       await page.click(Selectors.REMEMBER_DEVICE_INPUT);
       await this._navClick(Selectors.SUBMIT_INPUT);
     }
@@ -480,12 +494,12 @@ export class AmazonOrderReportsApi {
 
   private async _navigate(
     path: string,
-    queryParams: { [key: string]: string | number } = {}
+    queryParams: { [key: string]: string | number } = {},
   ): Promise<void> {
     const page = await this._getPage();
 
     const url = Object.assign(new URL(path, this.#options.baseUrl ?? DEFAULT_BASE_URL), {
-      search: queryString.stringify(queryParams)
+      search: queryString.stringify(queryParams),
     }).toString();
 
     this.#logger.debug(`Navigating to ${url}`);
