@@ -3,7 +3,7 @@ import { createReadStream, Dirent, FSWatcher, PathLike, ReadStream, watch } from
 import { mkdtemp, readdir, unlink } from 'fs/promises';
 import mockdate from 'mockdate';
 import { tmpdir } from 'os';
-import { ElementHandle, Response } from 'puppeteer';
+import { ElementHandle, Response, Cookie } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import { Readable } from 'stream';
 import { mocked } from 'ts-jest/utils';
@@ -77,6 +77,33 @@ describe('AmazonOrderReportsApi', () => {
         }
       });
     });
+
+    it('should use provided cookies', async () => {
+      const cookies = [
+        {
+          name: 'session-id',
+          value: '938-4859302-3482917',
+          domain: '.amazon.com',
+          path: '/',
+          expires: 1641091354.410085,
+          size: 29,
+          httpOnly: false,
+          sameSite: 'Strict',
+          secure: true,
+          session: false
+        } as Cookie
+      ];
+
+      const api = new AmazonOrderReportsApi({
+        username: 'testuser@example.com',
+        password: 'test123',
+        cookies
+      });
+
+      await api.start();
+
+      expect(mocked(mocks.page.setCookie)).toBeCalledWith(cookies[0]);
+    });
   });
 
   describe('stop', () => {
@@ -117,6 +144,37 @@ describe('AmazonOrderReportsApi', () => {
 
       expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=password]', 'test123');
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('input[name=rememberMe]');
+    });
+
+    it('should call saveCookiesFn with cookies if it is provided', async () => {
+      const cookies = [
+        {
+          name: 'session-id-time',
+          value: '2082787201l',
+          domain: '.amazon.com',
+          path: '/',
+          expires: 1641091354.410037,
+          size: 26,
+          httpOnly: false,
+          secure: false,
+          session: false
+        } as Cookie
+      ];
+
+      mockUrls('https://www.amazon.com/ap/signin');
+      mocked(mocks.page.cookies).mockResolvedValue(cookies);
+
+      const saveCookiesFn = jest.fn();
+
+      const api = new AmazonOrderReportsApi({
+        username: 'testuser@example.com',
+        password: 'test123',
+        saveCookiesFn
+      });
+
+      await api.getItems().next();
+
+      expect(saveCookiesFn).toHaveBeenCalledWith(cookies);
     });
 
     it('should throw error if OTP code is required, but no OTP option is provided', async () => {
