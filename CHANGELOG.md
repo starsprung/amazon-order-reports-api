@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/starsprung/amazon-order-reports-api/compare/v3.1.0...v3.2.0) (2021-01-02)
+
+
+### Features
+
+* allow provider functions for username and password ([1db0f3a](https://github.com/starsprung/amazon-order-reports-api/commit/1db0f3a6f5303366d3b064f52d5ce26e618604c3))
+
 # [3.1.0](https://github.com/starsprung/amazon-order-reports-api/compare/v3.0.1...v3.1.0) (2021-01-02)
 
 
