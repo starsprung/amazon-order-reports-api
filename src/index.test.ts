@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { AmazonOrderReportsApi, OrderItem, Refund } from './index';
 import { mocks } from './__mocks__/puppeteer-extra';
 
+jest.mock('delay');
 jest.mock('fs');
 jest.mock('fs/promises');
 jest.mock('os');
@@ -27,7 +28,7 @@ describe('AmazonOrderReportsApi', () => {
     mocked(mocks.page.url).mockReturnValue('');
     mocked(mocks.page.waitForResponse).mockImplementation(async (fn) => {
       (fn as (response: Response) => boolean)(({
-        url: () => 'https://www.amazon.com/b2b/reports/download'
+        url: () => 'https://www.amazon.com/b2b/reports/download',
       } as unknown) as Response);
       return {} as Response;
     });
@@ -63,9 +64,9 @@ describe('AmazonOrderReportsApi', () => {
         puppeteerOpts: {
           defaultViewport: {
             height: 600,
-            width: 800
-          }
-        }
+            width: 800,
+          },
+        },
       });
 
       await api.start();
@@ -73,8 +74,8 @@ describe('AmazonOrderReportsApi', () => {
       expect(mocked(puppeteer.launch)).toBeCalledWith({
         defaultViewport: {
           height: 600,
-          width: 800
-        }
+          width: 800,
+        },
       });
     });
 
@@ -90,14 +91,14 @@ describe('AmazonOrderReportsApi', () => {
           httpOnly: false,
           sameSite: 'Strict',
           secure: true,
-          session: false
-        } as Cookie
+          session: false,
+        } as Cookie,
       ];
 
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123',
-        cookies
+        cookies,
       });
 
       await api.start();
@@ -114,9 +115,9 @@ describe('AmazonOrderReportsApi', () => {
         puppeteerOpts: {
           defaultViewport: {
             height: 600,
-            width: 800
-          }
-        }
+            width: 800,
+          },
+        },
       });
 
       await api.start();
@@ -132,17 +133,44 @@ describe('AmazonOrderReportsApi', () => {
 
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
-        password: 'test123'
+        password: 'test123',
       });
 
       await api.getItems().next();
 
       expect(mocked(mocks.page.type)).toHaveBeenCalledWith(
         'input[name=email]',
-        'testuser@example.com'
+        'testuser@example.com',
+        { delay: 200 },
       );
 
-      expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=password]', 'test123');
+      expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=password]', 'test123', {
+        delay: 200,
+      });
+
+      expect(mocked(mocks.page.click)).toHaveBeenCalledWith('input[name=rememberMe]');
+    });
+
+    it('should accept a function for username and password', async () => {
+      mockUrls('https://www.amazon.com/ap/signin');
+
+      const api = new AmazonOrderReportsApi({
+        username: async () => 'testuser@example.com',
+        password: async () => 'test123',
+      });
+
+      await api.getItems().next();
+
+      expect(mocked(mocks.page.type)).toHaveBeenCalledWith(
+        'input[name=email]',
+        'testuser@example.com',
+        { delay: 200 },
+      );
+
+      expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=password]', 'test123', {
+        delay: 200,
+      });
+
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('input[name=rememberMe]');
     });
 
@@ -157,8 +185,8 @@ describe('AmazonOrderReportsApi', () => {
           size: 26,
           httpOnly: false,
           secure: false,
-          session: false
-        } as Cookie
+          session: false,
+        } as Cookie,
       ];
 
       mockUrls('https://www.amazon.com/ap/signin');
@@ -169,7 +197,7 @@ describe('AmazonOrderReportsApi', () => {
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123',
-        saveCookiesFn
+        saveCookiesFn,
       });
 
       await api.getItems().next();
@@ -182,11 +210,11 @@ describe('AmazonOrderReportsApi', () => {
 
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
-        password: 'test123'
+        password: 'test123',
       });
 
       await expect(api.getItems().next()).rejects.toThrow(
-        '2FA code requested, but neither otpSecret nor otpFn were provided'
+        '2FA code requested, but neither otpSecret nor otpFn were provided',
       );
     });
 
@@ -196,12 +224,14 @@ describe('AmazonOrderReportsApi', () => {
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123',
-        otpSecret: 'GVYX4RKDFYXXMNDJ'
+        otpSecret: 'GVYX4RKDFYXXMNDJ',
       });
 
       await api.getItems().next();
 
-      expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=otpCode]', '930899');
+      expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=otpCode]', '930899', {
+        delay: 200,
+      });
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('input[name=rememberDevice]');
     });
 
@@ -209,18 +239,20 @@ describe('AmazonOrderReportsApi', () => {
       mockUrls(
         'https://www.amazon.com/ap/signin',
         'https://www.amazon.com/ap/mfa/new-otp',
-        'https://www.amazon.com/ap/mfa'
+        'https://www.amazon.com/ap/mfa',
       );
 
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
         password: 'test123',
-        otpFn: async () => '123456'
+        otpFn: async () => '123456',
       });
 
       await api.getItems().next();
 
-      expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=otpCode]', '123456');
+      expect(mocked(mocks.page.type)).toHaveBeenCalledWith('input[name=otpCode]', '123456', {
+        delay: 200,
+      });
       expect(mocked(mocks.page.click)).toHaveBeenCalledWith('input[name=rememberDevice]');
     });
 
@@ -229,7 +261,7 @@ describe('AmazonOrderReportsApi', () => {
 
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
-        password: 'test123'
+        password: 'test123',
       });
 
       await api.getItems().next();
@@ -243,7 +275,7 @@ describe('AmazonOrderReportsApi', () => {
 
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
-        password: 'test123'
+        password: 'test123',
       });
 
       await expect(api.getItems().next()).rejects.toThrow('No sign-out link detected');
@@ -255,7 +287,7 @@ describe('AmazonOrderReportsApi', () => {
 
       const api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
-        password: 'test123'
+        password: 'test123',
       });
 
       await expect(api.getItems().next()).rejects.toThrow('Failed request');
@@ -268,11 +300,11 @@ describe('AmazonOrderReportsApi', () => {
     beforeEach(() => {
       api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
-        password: 'test123'
+        password: 'test123',
       });
 
       mocked(createReadStream).mockImplementation(() =>
-        jest.requireActual('fs').createReadStream(appRootPath.resolve('test-data/items.csv'))
+        jest.requireActual('fs').createReadStream(appRootPath.resolve('test-data/items.csv')),
       );
     });
 
@@ -292,14 +324,14 @@ describe('AmazonOrderReportsApi', () => {
 
       expect(mocked(mocks.cdpSession.send)).toBeCalledWith('Browser.setDownloadBehavior', {
         behavior: 'allow',
-        downloadPath: '/tmp/amzscrKudNUt'
+        downloadPath: '/tmp/amzscrKudNUt',
       });
     });
 
     it('should use provided dates to retrieve report', async () => {
       for await (const _ of api.getItems({
         startDate: new Date('2020-01-07T00:00:00.000Z'),
-        endDate: new Date('2021-02-14T00:00:00.000Z')
+        endDate: new Date('2021-02-14T00:00:00.000Z'),
       })) {
       }
 
@@ -319,7 +351,7 @@ describe('AmazonOrderReportsApi', () => {
       }
 
       expect(mocked(mocks.page.$x)).toHaveBeenCalledWith(
-        '//input[@name="delete-report" and ancestor::tr[contains(., \'amzscr-5fb041e4-ad7a-41d4-879f-d1ec1919201a\')]]'
+        '//input[@name="delete-report" and ancestor::tr[contains(., \'amzscr-5fb041e4-ad7a-41d4-879f-d1ec1919201a\')]]',
       );
       expect(fakeElements[0].click).toBeCalled();
     });
@@ -341,11 +373,11 @@ describe('AmazonOrderReportsApi', () => {
     beforeEach(() => {
       api = new AmazonOrderReportsApi({
         username: 'testuser@example.com',
-        password: 'test123'
+        password: 'test123',
       });
 
       mocked(createReadStream).mockImplementation(() =>
-        jest.requireActual('fs').createReadStream(appRootPath.resolve('test-data/refunds.csv'))
+        jest.requireActual('fs').createReadStream(appRootPath.resolve('test-data/refunds.csv')),
       );
     });
 
