@@ -1,3 +1,10 @@
+# [3.1.0](https://github.com/starsprung/amazon-order-reports-api/compare/v3.0.1...v3.1.0) (2021-01-02)
+
+
+### Features
+
+* add support for saving/loading cookies ([bea79b1](https://github.com/starsprung/amazon-order-reports-api/commit/bea79b152601ed6b7e90c3d0023f614ba827ca0f))
+
 ## [3.0.1](https://github.com/starsprung/amazon-order-reports-api/compare/v3.0.0...v3.0.1) (2021-01-01)
 
 
