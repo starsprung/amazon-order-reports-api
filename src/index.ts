@@ -6,7 +6,7 @@ import { DateTime } from 'luxon';
 import { tmpdir } from 'os';
 import { authenticator } from 'otplib';
 import { join } from 'path';
-import { Browser, LaunchOptions, Page } from 'puppeteer';
+import { Browser, Cookie, LaunchOptions, Page } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import queryString from 'query-string';
@@ -132,6 +132,12 @@ export class AmazonOrderReportsApi {
     baseUrl?: string;
 
     /**
+     * Cookies from a previous run. These can be acquired using **saveCookiesFn** to avoid
+     * unnecessary repeated authentications.
+     */
+    cookies?: Array<Cookie>;
+
+    /**
      * Emit log messages at this level. Currently only {@link LogLevel.DEBUG} is used.
      * @default {@link LogLevel.NONE}
      */
@@ -164,6 +170,12 @@ export class AmazonOrderReportsApi {
     puppeteerOpts?: LaunchOptions;
 
     /**
+     * If provided, this function will be called with Puppeteer's cookies after login
+     * which can be provided to **cookies** when creating a new instance of AmazonOrderReportsApi.
+     */
+    saveCookiesFn?: (cookies: Array<Cookie>) => void | Promise<void>;
+
+    /**
      * Amazon account username
      */
     username: string;
@@ -183,6 +195,11 @@ export class AmazonOrderReportsApi {
 
     if (!this.#page) {
       this.#page = await this.#browser.newPage();
+
+      if (this.#options.cookies) {
+        this.#logger.debug('Using provided cookies');
+        await this.#page.setCookie(...this.#options.cookies);
+      }
     }
   }
 
@@ -440,6 +457,11 @@ export class AmazonOrderReportsApi {
     }
 
     await this._assert(Selectors.SIGN_OUT_LINK, 'No sign-out link detected, failed to sign in?');
+
+    if (this.#options.saveCookiesFn) {
+      this.#logger.debug('Calling saveCookiesFn with cookies');
+      this.#options.saveCookiesFn(await page.cookies());
+    }
   }
 
   private async _navClick(selector: string, isXpath = false): Promise<void> {
@@ -449,7 +471,7 @@ export class AmazonOrderReportsApi {
     if (isXpath) {
       const element = await page.$x(selector);
       if (element?.length > 0) {
-        element[0].click();
+        await element[0].click();
       }
     } else {
       await Promise.all([page.click(selector), page.waitForNavigation()]);
@@ -477,3 +499,4 @@ export class AmazonOrderReportsApi {
 }
 
 export { LogLevel } from './logger';
+export { Cookie } from 'puppeteer';
