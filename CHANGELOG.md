@@ -1,3 +1,10 @@
+## [3.2.1](https://github.com/starsprung/amazon-order-reports-api/compare/v3.2.0...v3.2.1) (2021-01-02)
+
+
+### Bug Fixes
+
+* request username and password before starting login ([54a5478](https://github.com/starsprung/amazon-order-reports-api/commit/54a5478d3a4589b1d55549ec4e07d71f0a6c8d6e))
+
 # [3.2.0](https://github.com/starsprung/amazon-order-reports-api/compare/v3.1.0...v3.2.0) (2021-01-02)
 
 
