@@ -428,8 +428,8 @@ export class AmazonOrderReportsApi {
   private async _handleLogin(): Promise<void> {
     const { username, password } = this.#options;
 
-    const usernameFn = typeof username === 'string' ? () => username : username;
-    const passwordFn = typeof password === 'string' ? () => password : password;
+    const usernameProvider = typeof username === 'string' ? () => username : username;
+    const passwordProvider = typeof password === 'string' ? () => password : password;
 
     const page = await this._getPage();
 
@@ -439,14 +439,17 @@ export class AmazonOrderReportsApi {
     }
     this.#logger.debug('Login required');
 
+    const providedUsername = await usernameProvider();
+    const providedPassword = await passwordProvider();
+
     this.#logger.debug('Entering username');
-    await page.type(Selectors.EMAIL_INPUT, await usernameFn(), { delay: LOGIN_TYPING_DELAY });
+    await page.type(Selectors.EMAIL_INPUT, providedUsername, { delay: LOGIN_TYPING_DELAY });
     await this._navClick(Selectors.SUBMIT_INPUT);
 
     await delay(LOGIN_STEP_DELAY);
 
     this.#logger.debug('Entering password');
-    await page.type(Selectors.PASSWORD_INPUT, await passwordFn(), { delay: LOGIN_TYPING_DELAY });
+    await page.type(Selectors.PASSWORD_INPUT, providedPassword, { delay: LOGIN_TYPING_DELAY });
     await page.click(Selectors.REMEMBER_ME_INPUT);
     await this._navClick(Selectors.SUBMIT_INPUT);
 
