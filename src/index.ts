@@ -26,24 +26,29 @@ const LOGIN_TYPING_DELAY = 200;
 
 puppeteer.use(StealthPlugin());
 
-interface Report {
-  asinIsbn: string;
+interface ReportItem {
   buyerName: string;
-  category: string;
   groupName: string;
   orderDate: Date;
   orderId: string;
   purchaseOrderNumber?: string;
+  website: string;
+}
+
+interface LineItem extends ReportItem {
+  asinIsbn: string;
+  category: string;
   quantity: number;
   seller: string;
   sellerCredentials: string;
   taxExemptionApplied: string;
   title: string;
-  website: string;
 }
 
-export interface OrderItem extends Report {
+export interface OrderItem extends LineItem {
+  asinIsbn: string;
   carrierNameTrackingNumber?: string;
+  category: string;
   condition: string;
   currency: string;
   exemptionOptOut: string;
@@ -56,7 +61,10 @@ export interface OrderItem extends Report {
   paymentInstrumentType: string;
   poLineNumber?: string;
   purchasePricePerUnit: number;
+  quantity: number;
   releaseDate?: Date;
+  seller: string;
+  sellerCredentials: string;
   shipmentDate?: Date;
   shippingAddressCity?: string;
   shippingAddressName?: string;
@@ -64,19 +72,28 @@ export interface OrderItem extends Report {
   shippingAddressStreet1?: string;
   shippingAddressStreet2?: string;
   shippingAddressZip?: string;
+  taxExemptionApplied: string;
   taxExemptionType: string;
+  title: string;
   unspscCode: string;
 }
 
-export interface Refund extends Report {
+export interface Refund extends LineItem {
+  asinIsbn: string;
+  category: string;
+  quantity: number;
   refundAmount: number;
   refundCondition: string;
   refundDate: Date;
   refundReason: string;
   refundTaxAmount: number;
+  seller: string;
+  sellerCredentials: string;
+  taxExemptionApplied: string;
+  title: string;
 }
 
-export interface Shipment extends Report {
+export interface Shipment extends ReportItem {
   carrierNameTrackingNumber: string;
   orderStatus: string;
   orderingCustomerEmail: string;
@@ -347,7 +364,6 @@ export class AmazonOrderReportsApi {
           const transformFn =
             ({
               orderDate: parseDate,
-              quantity: parseInt,
               shipmentDate: parseDate,
               subtotal: parsePrice,
               shippingCharge: parsePrice,
