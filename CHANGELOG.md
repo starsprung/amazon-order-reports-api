@@ -1,3 +1,10 @@
+## [3.3.1](https://github.com/starsprung/amazon-order-reports-api/compare/v3.3.0...v3.3.1) (2021-01-04)
+
+
+### Bug Fixes
+
+* fix incorrect types on Shipment ([ccaf751](https://github.com/starsprung/amazon-order-reports-api/commit/ccaf751044e5fe1b0cd9be6925d2d0f8b6c56153))
+
 # [3.3.0](https://github.com/starsprung/amazon-order-reports-api/compare/v3.2.1...v3.3.0) (2021-01-04)
 
 
