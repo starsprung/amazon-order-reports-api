@@ -76,9 +76,30 @@ export interface Refund extends Report {
   refundTaxAmount: number;
 }
 
+export interface Shipment extends Report {
+  carrierNameTrackingNumber: string;
+  orderStatus: string;
+  orderingCustomerEmail: string;
+  paymentInstrumentType: string;
+  shipmentDate: Date;
+  shippingAddressCity?: string;
+  shippingAddressName?: string;
+  shippingAddressState?: string;
+  shippingAddressStreet1?: string;
+  shippingAddressStreet2?: string;
+  shippingAddressZip?: string;
+  shippingCharge: number;
+  subtotal: number;
+  taxBeforePromotions: number;
+  taxCharged: number;
+  totalCharged: number;
+  totalPromotions: number;
+}
+
 enum ReportType {
   ITEMS = 'ITEMS',
   REFUNDS = 'REFUNDS',
+  SHIPMENTS = 'SHIPMENTS',
 }
 
 enum Selectors {
@@ -115,6 +136,7 @@ type AmazonOrderReportsApiOptions = ConstructorParameters<typeof AmazonOrderRepo
 interface GetReportReturnType {
   [ReportType.ITEMS]: OrderItem;
   [ReportType.REFUNDS]: Refund;
+  [ReportType.SHIPMENTS]: Shipment;
 }
 
 const identity = <T>(x: T): T => x;
@@ -191,7 +213,7 @@ export class AmazonOrderReportsApi {
 
   /**
    * Start the internal Puppeteer isntance. This will be called automatically by
-   * {@link getItems} and {@link getRefunds}, but you may also call it manually.
+   * {@link getItems}, {@link getRefunds} and {@link getShipments}, but you may also call it manually.
    */
   async start(): Promise<void> {
     if (!this.#browser) {
@@ -253,6 +275,28 @@ export class AmazonOrderReportsApi {
     yield* this._getReport(ReportType.REFUNDS, options, AmazonOrderReportsApi._parseRefundRecord);
   }
 
+  /**
+   * Retrieve shipments in the given date range. If no date range is given, the previous
+   * 30 days will be used.
+   */
+  async *getShipments(
+    options: {
+      /** Start of date range to report. */
+      startDate: Date;
+      /** End of date range to report. */
+      endDate: Date;
+    } = {
+      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      endDate: new Date(),
+    },
+  ): AsyncGenerator<Shipment> {
+    yield* this._getReport(
+      ReportType.SHIPMENTS,
+      options,
+      AmazonOrderReportsApi._parseShipmentRecord,
+    );
+  }
+
   private static _parseOrderItemRecord(record: { [key: string]: string }): OrderItem {
     return (Object.fromEntries(
       Object.entries(record)
@@ -293,6 +337,29 @@ export class AmazonOrderReportsApi {
           return [key, transformFn(value)];
         }),
     ) as unknown) as Refund;
+  }
+
+  private static _parseShipmentRecord(record: { [key: string]: string }): Shipment {
+    return (Object.fromEntries(
+      Object.entries(record)
+        .filter(([, value]) => value !== '')
+        .map(([key, value]) => {
+          const transformFn =
+            ({
+              orderDate: parseDate,
+              quantity: parseInt,
+              shipmentDate: parseDate,
+              subtotal: parsePrice,
+              shippingCharge: parsePrice,
+              taxBeforePromotions: parsePrice,
+              totalPromotions: parsePrice,
+              taxCharged: parsePrice,
+              totalCharged: parsePrice,
+            } as { [columnValue: string]: (value: unknown) => unknown })[key] ?? identity;
+
+          return [key, transformFn(value)];
+        }),
+    ) as unknown) as Shipment;
   }
 
   private async _assert(selector: string, message?: string): Promise<void> {

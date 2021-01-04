@@ -8,7 +8,7 @@ import puppeteer from 'puppeteer-extra';
 import { Readable } from 'stream';
 import { mocked } from 'ts-jest/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { AmazonOrderReportsApi, OrderItem, Refund } from './index';
+import { AmazonOrderReportsApi, OrderItem, Refund, Shipment } from './index';
 import { mocks } from './__mocks__/puppeteer-extra';
 
 jest.mock('delay');
@@ -389,6 +389,31 @@ describe('AmazonOrderReportsApi', () => {
 
       expect(items).toHaveLength(3);
       expect(items).toMatchSnapshot();
+    });
+  });
+
+  describe('getShipments', () => {
+    let api: AmazonOrderReportsApi;
+
+    beforeEach(() => {
+      api = new AmazonOrderReportsApi({
+        username: 'testuser@example.com',
+        password: 'test123',
+      });
+
+      mocked(createReadStream).mockImplementation(() =>
+        jest.requireActual('fs').createReadStream(appRootPath.resolve('test-data/shipments.csv')),
+      );
+    });
+
+    it('should return shipment for each row in report', async () => {
+      const shipments: Array<Shipment> = [];
+      for await (const shipment of api.getShipments()) {
+        shipments.push(shipment);
+      }
+
+      expect(shipments).toHaveLength(3);
+      expect(shipments).toMatchSnapshot();
     });
   });
 });
