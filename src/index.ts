@@ -492,8 +492,6 @@ export class AmazonOrderReportsApi {
     const reportName = await this._fillReportForm(reportType, startDate, endDate);
     const reportPath = await this._downloadReport();
 
-    await this._deleteReport(reportName);
-
     try {
       const csvStream = createReadStream(reportPath).pipe(
         csv({
@@ -515,7 +513,13 @@ export class AmazonOrderReportsApi {
 
       throw err;
     } finally {
-      await unlink(reportPath);
+      try {
+        await this._deleteReport(reportName);
+      } catch {}
+
+      try {
+        await unlink(reportPath);
+      } catch {}
     }
   }
 
