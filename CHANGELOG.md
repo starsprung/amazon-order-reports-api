@@ -1,3 +1,10 @@
+## [3.3.3](https://github.com/starsprung/amazon-order-reports-api/compare/v3.3.2...v3.3.3) (2021-01-05)
+
+
+### Bug Fixes
+
+* always attempt to delete report in Amazon ([#17](https://github.com/starsprung/amazon-order-reports-api/issues/17)) ([3c209c2](https://github.com/starsprung/amazon-order-reports-api/commit/3c209c25318e66cb1d418ea80bdaafbf0df32639))
+
 ## [3.3.2](https://github.com/starsprung/amazon-order-reports-api/compare/v3.3.1...v3.3.2) (2021-01-05)
 
 
