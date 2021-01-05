@@ -1,3 +1,10 @@
+## [3.3.2](https://github.com/starsprung/amazon-order-reports-api/compare/v3.3.1...v3.3.2) (2021-01-05)
+
+
+### Bug Fixes
+
+* handle empty reports ([5d1a5e0](https://github.com/starsprung/amazon-order-reports-api/commit/5d1a5e04c0e7071ca1cf37e2526cf85d383f24da))
+
 ## [3.3.1](https://github.com/starsprung/amazon-order-reports-api/compare/v3.3.0...v3.3.1) (2021-01-04)
 
 
