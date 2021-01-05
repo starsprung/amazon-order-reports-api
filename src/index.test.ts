@@ -365,6 +365,21 @@ describe('AmazonOrderReportsApi', () => {
 
       expect(unlink).toBeCalledWith('/tmp/amzscrKudNUt/01-Dec-2020_to_31-Dec-2020.csv');
     });
+
+    it('should handle reports with no data', async () => {
+      mocked(createReadStream).mockImplementationOnce(() =>
+        jest
+          .requireActual('fs')
+          .createReadStream(appRootPath.resolve('test-data/items-no-data.csv')),
+      );
+
+      const items: Array<OrderItem> = [];
+      for await (const item of api.getItems()) {
+        items.push(item);
+      }
+
+      expect(items).toHaveLength(0);
+    });
   });
 
   describe('getRefunds', () => {

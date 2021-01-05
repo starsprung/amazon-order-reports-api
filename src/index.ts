@@ -494,18 +494,29 @@ export class AmazonOrderReportsApi {
 
     await this._deleteReport(reportName);
 
-    const csvStream = createReadStream(reportPath).pipe(
-      csv({
-        columns: (headers: Array<string>) =>
-          headers.map((header) => camelcase(header.replace(/\W/g, ' '))),
-      }),
-    );
+    try {
+      const csvStream = createReadStream(reportPath).pipe(
+        csv({
+          columns: (headers: Array<string>) =>
+            headers.map((header) => camelcase(header.replace(/\W/g, ' '))),
+        }),
+      );
 
-    for await (const record of csvStream) {
-      yield parseFn(record);
+      for await (const record of csvStream) {
+        yield parseFn(record);
+      }
+    } catch (err) {
+      if (
+        err.code === 'CSV_RECORD_DONT_MATCH_COLUMNS_LENGTH' &&
+        err.record?.[0] === 'No data found for this time period'
+      ) {
+        return;
+      }
+
+      throw err;
+    } finally {
+      await unlink(reportPath);
     }
-
-    await unlink(reportPath);
   }
 
   private async _handleLogin(): Promise<void> {
