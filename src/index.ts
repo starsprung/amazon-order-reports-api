@@ -135,7 +135,7 @@ enum Selectors {
   REPORT_START_MONTH_INPUT = '#report-month-start',
   REPORT_START_YEAR_INPUT = '#report-year-start',
   REPORT_TYPE_INPUT = '#report-type',
-  SIGN_OUT_LINK = 'a[href*=sign-out]',
+  SIGN_OUT_LINK = 'a[href*=nav_signout]',
   SKIP_ACCOUNT_FIXUP_LINK = 'a[id*=skip]',
   SUBMIT_INPUT = 'input[type=submit]',
 }
