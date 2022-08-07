@@ -1,3 +1,10 @@
+## [3.3.4](https://github.com/starsprung/amazon-order-reports-api/compare/v3.3.3...v3.3.4) (2022-08-07)
+
+
+### Bug Fixes
+
+* update selectors for new reports site ([#22](https://github.com/starsprung/amazon-order-reports-api/issues/22)) ([04843bf](https://github.com/starsprung/amazon-order-reports-api/commit/04843bfb7b325438613a90c8fa2edfdd70f76298))
+
 ## [3.3.3](https://github.com/starsprung/amazon-order-reports-api/compare/v3.3.2...v3.3.3) (2021-01-05)
 
 
