@@ -5,7 +5,7 @@ import { mkdtemp, readdir, unlink } from 'fs/promises';
 import { DateTime } from 'luxon';
 import { tmpdir } from 'os';
 import { authenticator } from 'otplib';
-import { join } from 'path';
+import { join, parse } from 'path';
 import { Browser, Cookie, LaunchOptions, Page } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -120,21 +120,17 @@ enum ReportType {
 }
 
 enum Selectors {
-  DELETE_REPORT = '@name="delete-report"',
+  DELETE_REPORT = 'name="deleteReportElement"',
   EMAIL_INPUT = 'input[name=email]',
   OTP_INPUT = 'input[name=otpCode]',
   PASSWORD_INPUT = 'input[name=password]',
   REMEMBER_DEVICE_INPUT = 'input[name=rememberDevice]',
   REMEMBER_ME_INPUT = 'input[name=rememberMe]',
   REPORT_CONFIRM_LINK = '#report-confirm',
-  REPORT_END_DAY_INPUT = '#report-day-end',
-  REPORT_END_MONTH_INPUT = '#report-month-end',
-  REPORT_END_YEAR_INPUT = '#report-year-end',
+  REPORT_END_DATE_INPUT = '#endDateCalendar input',
   REPORT_NAME_INPUT = '#report-name',
-  REPORT_START_DAY_INPUT = '#report-day-start',
-  REPORT_START_MONTH_INPUT = '#report-month-start',
-  REPORT_START_YEAR_INPUT = '#report-year-start',
-  REPORT_TYPE_INPUT = '#report-type',
+  REPORT_START_DATE_INPUT = '#startDateCalendar input',
+  REPORT_TYPE_INPUT = 'select[name=reportType]',
   SIGN_OUT_LINK = 'a[href*=sign-out]',
   SKIP_ACCOUNT_FIXUP_LINK = 'a[id*=skip]',
   SUBMIT_INPUT = 'input[type=submit]',
@@ -386,14 +382,11 @@ export class AmazonOrderReportsApi {
     }
   }
 
-  private async _deleteReport(reportName: string): Promise<void> {
-    await this._navClick(
-      `//input[${Selectors.DELETE_REPORT} and ancestor::tr[contains(., '${reportName}')]]`,
-      true,
-    );
+  private async _deleteReport(reportId: string): Promise<void> {
+    await this._navClick(`input[${Selectors.DELETE_REPORT}][id*="${reportId}"]`, false);
   }
 
-  private async _downloadReport(): Promise<string> {
+  private async _downloadReport(): Promise<[string, string]> {
     const page = await this._getPage();
 
     const downloadDir = await mkdtemp(join(tmpdir(), DOWNLOAD_DIR_PREFIX));
@@ -406,7 +399,7 @@ export class AmazonOrderReportsApi {
       downloadPath: downloadDir,
     });
 
-    const [downloadPath] = await Promise.all([
+    const [downloadPath, _, downloadResponse] = await Promise.all([
       new Promise<string>((resolve) => {
         const watcher = watch(downloadDir, async () => {
           const files = await readdir(downloadDir);
@@ -421,7 +414,7 @@ export class AmazonOrderReportsApi {
       page.waitForResponse((r) => r.url().includes(Urls.DOWNLOAD_REPORT)),
     ]);
 
-    return downloadPath;
+    return [downloadPath, downloadResponse.url()];
   }
 
   private async _fillReportForm(
@@ -438,12 +431,8 @@ export class AmazonOrderReportsApi {
     const startDateTime = DateTime.fromJSDate(startDate).setZone('America/Los_Angeles');
     const endDateTime = DateTime.fromJSDate(endDate).setZone('America/Los_Angeles');
 
-    await page.select(Selectors.REPORT_START_DAY_INPUT, `${startDateTime.toFormat('d')}`);
-    await page.select(Selectors.REPORT_START_MONTH_INPUT, `${startDateTime.toFormat('M')}`);
-    await page.select(Selectors.REPORT_START_YEAR_INPUT, `${startDateTime.toFormat('yyyy')}`);
-    await page.select(Selectors.REPORT_END_DAY_INPUT, `${endDateTime.toFormat('d')}`);
-    await page.select(Selectors.REPORT_END_MONTH_INPUT, `${endDateTime.toFormat('M')}`);
-    await page.select(Selectors.REPORT_END_YEAR_INPUT, `${endDateTime.toFormat('yyyy')}`);
+    await page.type(Selectors.REPORT_START_DATE_INPUT, startDateTime.toFormat('MM/dd/yyyy'));
+    await page.type(Selectors.REPORT_END_DATE_INPUT, endDateTime.toFormat('MM/dd/yyyy'));
 
     await page.type(Selectors.REPORT_NAME_INPUT, reportName);
 
@@ -489,8 +478,9 @@ export class AmazonOrderReportsApi {
 
     const { startDate, endDate } = options;
 
-    const reportName = await this._fillReportForm(reportType, startDate, endDate);
-    const reportPath = await this._downloadReport();
+    await this._fillReportForm(reportType, startDate, endDate);
+    const [reportPath, reportUrl] = await this._downloadReport();
+    const reportId = parse(reportUrl).base;
 
     try {
       const csvStream = createReadStream(reportPath).pipe(
@@ -514,7 +504,7 @@ export class AmazonOrderReportsApi {
       throw err;
     } finally {
       try {
-        await this._deleteReport(reportName);
+        await this._deleteReport(reportId);
       } catch {}
 
       try {

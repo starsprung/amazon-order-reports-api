@@ -18,6 +18,8 @@ jest.mock('os');
 jest.mock('uuid');
 
 describe('AmazonOrderReportsApi', () => {
+  const reportId = '1232lkajsdf';
+
   beforeEach(() => {
     mocked(createReadStream).mockReturnValue((Readable.from([]) as unknown) as ReadStream);
     mocked(mkdtemp).mockResolvedValue('/tmp/amzscrKudNUt');
@@ -26,11 +28,12 @@ describe('AmazonOrderReportsApi', () => {
     mocked(mocks.page.goto).mockResolvedValue(mocks.response);
     mocked(mocks.page.target).mockReturnValue(mocks.target);
     mocked(mocks.page.url).mockReturnValue('');
+    const mockedResponse = {
+      url: () => `https://www.amazon.com/b2b/reports/download/${reportId}`,
+    } as Response;
     mocked(mocks.page.waitForResponse).mockImplementation(async (fn) => {
-      (fn as (response: Response) => boolean)(({
-        url: () => 'https://www.amazon.com/b2b/reports/download',
-      } as unknown) as Response);
-      return {} as Response;
+      (fn as (response: Response) => boolean)(mockedResponse);
+      return mockedResponse;
     });
     mocked(mocks.response.ok).mockReturnValue(true);
     mocked(mocks.target.createCDPSession).mockResolvedValue(mocks.cdpSession);
@@ -335,25 +338,20 @@ describe('AmazonOrderReportsApi', () => {
       })) {
       }
 
-      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-day-start', '6');
-      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-month-start', '1');
-      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-year-start', '2020');
-      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-day-end', '13');
-      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-month-end', '2');
-      expect(mocked(mocks.page.select)).toHaveBeenCalledWith('#report-year-end', '2021');
+      expect(mocked(mocks.page.type)).toHaveBeenCalledWith(
+        '#startDateCalendar input',
+        '01/06/2020',
+      );
+      expect(mocked(mocks.page.type)).toHaveBeenCalledWith('#endDateCalendar input', '02/13/2021');
     });
 
     it('should delete report after retrieval', async () => {
-      const fakeElements = ([{ click: jest.fn() }] as unknown) as Array<ElementHandle<Element>>;
-      mocked(mocks.page.$x).mockResolvedValue(fakeElements);
-
       for await (const _ of api.getItems()) {
       }
 
-      expect(mocked(mocks.page.$x)).toHaveBeenCalledWith(
-        '//input[@name="delete-report" and ancestor::tr[contains(., \'amzscr-5fb041e4-ad7a-41d4-879f-d1ec1919201a\')]]',
+      expect(mocked(mocks.page.click)).toHaveBeenCalledWith(
+        `input[name="deleteReportElement"][id*="${reportId}"]`,
       );
-      expect(fakeElements[0].click).toBeCalled();
     });
 
     it('should delete report on disk', async () => {
